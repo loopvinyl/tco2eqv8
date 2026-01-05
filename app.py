@@ -982,11 +982,10 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade):
         
         with col1:
             vpl = analise_tea['indicadores']['vpl']
-            cor_vpl = 'green' if vpl > 0 else 'red'
             st.metric(
                 "VPL (Valor Presente Líquido)",
                 f"R$ {formatar_br(vpl)}",
-                delta_color="off",
+                delta=None,
                 help="Valor presente dos fluxos de caixa futuros"
             )
         
@@ -1117,12 +1116,27 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade):
         
         with col3:
             diferenca = valor_credito - custo_tonelada
-            cor = 'green' if diferenca > 0 else 'red'
+            
+            # Determinar cor do delta baseado no valor
+            if diferenca > 0:
+                delta_color = "normal"  # verde para positivo
+            elif diferenca < 0:
+                delta_color = "inverse"  # vermelho para negativo
+            else:
+                delta_color = "off"  # neutro para zero
+            
+            # Calcular delta em porcentagem se possível
+            if valor_credito > 0 and diferenca != 0:
+                delta_percent = (diferenca / valor_credito) * 100
+                delta_text = f"{delta_percent:.1f}%"
+            else:
+                delta_text = None
+            
             st.metric(
                 "Margem por Crédito",
                 f"R$ {formatar_br(diferenca)}",
-                delta=f"{(diferenca/valor_credito*100):.1f}%" if valor_credito > 0 else "N/A",
-                delta_color=cor
+                delta=delta_text,
+                delta_color=delta_color
             )
         
         # Gráfico de trade-off
@@ -1254,9 +1268,7 @@ def criar_dashboard_financeiro(analise_tese, analise_unfccc, preco_carbono, taxa
             st.markdown(f"#### {analise_tese['nome']}")
             st.metric(
                 "Valor Esperado (R$)", 
-                f"R$ {formatar_br(analise_tese['financeiro_brl']['valor_medio'])}",
-                delta=f"±R$ {formatar_br(analise_tese['financeiro_brl']['downside'])}",
-                delta_color="off"
+                f"R$ {formatar_br(analise_tese['financeiro_brl']['valor_medio'])}"
             )
             
             st.markdown("**Intervalo de Confiança 95%:**")
@@ -1269,9 +1281,7 @@ def criar_dashboard_financeiro(analise_tese, analise_unfccc, preco_carbono, taxa
             st.markdown(f"#### {analise_unfccc['nome']}")
             st.metric(
                 "Valor Esperado (R$)", 
-                f"R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_medio'])}",
-                delta=f"±R$ {formatar_br(analise_unfccc['financeiro_brl']['downside'])}",
-                delta_color="off"
+                f"R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_medio'])}"
             )
             
             st.markdown("**Intervalo de Confiança 95%:**")
