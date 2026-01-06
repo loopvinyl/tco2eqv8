@@ -1,4 +1,3 @@
-
 import requests
 from bs4 import BeautifulSoup
 import streamlit as st
@@ -346,7 +345,7 @@ incluindo análise financeira detalhada com valores brasileiros e cenários de m
 """)
 
 # =============================================================================
-# SIDEBAR COM PARÂMETROS - VALORES BRASILEIROS
+# SIDEBAR COM PARÂMETROS - VALORES BRASILEIROS (AJUSTADOS CONFORME TABELA 18)
 # =============================================================================
 
 # Seção de cotação do carbono - AGORA ATUALIZADA AUTOMATICAMENTE
@@ -383,9 +382,9 @@ with st.sidebar:
                          help="Número de amostras para análise de sensibilidade")
     
     # =============================================================================
-    # PARÂMETROS TEA (ANÁLISE TÉCNICO-ECONÔMICA) - BRASIL
+    # PARÂMETROS TEA (ANÁLISE TÉCNICO-ECONÔMICA) - BRASIL (AJUSTADOS TABELA 18)
     # =============================================================================
-    with st.expander("🏭 Parâmetros TEA - Contexto Brasileiro"):
+    with st.expander("🏭 Parâmetros TEA - Contexto Brasileiro (Tabela 18)"):
         st.markdown("#### 💼 Parâmetros de Custo - Brasil")
         
         # Fatores de ajuste de custo
@@ -421,14 +420,24 @@ with st.sidebar:
                 key="preco_carbono_custom"
             )
         
-        # Preço do húmus
+        # Preço do húmus - AJUSTADO CONFORME TABELA 18
         preco_humus = st.number_input(
             "Preço do Húmus (R$/kg)",
-            min_value=0.5,
-            value=2.5,
-            step=0.1,
+            min_value=1.0,
+            value=10.0,  # Corrigido: R$ 10,00 (era R$ 2,50)
+            step=0.5,
             key="preco_humus",
-            help="Preço de mercado do húmus orgânico no Brasil"
+            help="Preço de mercado do húmus orgânico - Tabela 18: R$ 10,00/kg"
+        )
+        
+        # Preço das minhocas - NOVO PARÂMETRO TABELA 18
+        preco_minhoca = st.number_input(
+            "Preço da Minhoca (R$/kg)",
+            min_value=50.0,
+            value=100.0,  # Novo: R$ 100,00/kg
+            step=5.0,
+            key="preco_minhoca",
+            help="Preço de mercado da minhoca - Tabela 18: R$ 100,00/kg"
         )
         
         # Taxa de desconto
@@ -450,17 +459,17 @@ with st.sidebar:
             key="custo_aterro"
         )
     
-    # Informações sobre valores brasileiros
-    with st.expander("🇧🇷 Valores de Referência - Brasil"):
-        st.markdown("""
-        **💼 Adaptação de Zziwa et al. (2021) para realidade brasileira:**
+    # Informações sobre valores brasileiros - ATUALIZADO CONFORME TABELA 18
+    with st.expander("🇧🇷 Valores de Referência - Brasil (Tabela 18)"):
+        st.markdown(f"""
+        **💼 Valores da Tabela 18 - Adaptação de Zziwa et al. (2021):**
+        
+        **Para {residuos_kg_dia} kg/dia ({residuos_kg_dia*365/1000:.1f} ton/ano):**
         
         **🏗️ CAPEX (Investimento):**
-        - Reatores: R$ 1.000/unidade (trata 10 kg/dia cada)
-        - Minhocas: R$ 100/kg (Eisenia fetida)
-        - Infraestrutura: 20% do custo de equipamentos
-        - Projeto/engenharia: 10%
-        - Imprevistos: 15%
+        - **Reatores:** {residuos_kg_dia} unidades × R$ 1.000 = R$ {formatar_br(residuos_kg_dia*1000)}
+        - **Minhocas iniciais:** {residuos_kg_dia*3} kg × R$ 100 = R$ {formatar_br(residuos_kg_dia*300)}
+        - **Investimento total:** R$ {formatar_br(residuos_kg_dia*1000 + residuos_kg_dia*300)}
         
         **💰 OPEX (Operação - Anual):**
         - Mão de obra: 2h/dia × R$ 20/h × 365 dias = R$ 14.600
@@ -468,16 +477,18 @@ with st.sidebar:
         - Manutenção: 5% do CAPEX
         - Insumos: R$ 0,10/kg de resíduo tratado
         
-        **💵 Receitas:**
-        - Húmus: 30% conversão × R$ 2,5/kg
-        - Economia aterro: R$ 300/ton evitada
-        - Créditos carbono: Mercado voluntário/regulado
+        **💵 Receitas (para 100 kg/dia):**
+        - **Húmus:** 14.600 kg/ano × R$ 10 = R$ 146.000
+        - **Minhocas:** 745 kg/ano × R$ 100 = R$ 74.496
+        - **Economia aterro:** 36,5 ton × R$ 300 = R$ 10.950
+        - **Receita total sem carbono:** R$ 231.446
         
-        **📈 Escala padrão:**
-        - 100 kg/dia = 36,5 ton/ano
-        - 10 reatores necessários
-        - 50 kg de minhocas
-        - Investimento total: ~R$ 16.000
+        **📈 Dados de Produção:**
+        - Resíduos processados: {residuos_kg_dia*365/1000:.1f} ton/ano
+        - Reatores necessários: {residuos_kg_dia} unidades
+        - Minhocas iniciais: {residuos_kg_dia*3} kg
+        - Produção anual de húmus: {residuos_kg_dia*365/1000*0.4:.1f} ton (40% dos resíduos)
+        - Produção anual de minhocas: {745*(residuos_kg_dia/100):.1f} kg
         """)
     
     if st.button("🚀 Executar Simulação Completa", type="primary"):
@@ -727,51 +738,36 @@ def executar_simulacao_unfccc(parametros):
     return reducao_tco2eq
 
 # =============================================================================
-# FUNÇÕES PARA ANÁLISE TÉCNICO-ECONÔMICA (TEA) - BRASIL
+# FUNÇÕES PARA ANÁLISE TÉCNICO-ECONÔMICA (TEA) - BRASIL (AJUSTADAS TABELA 18)
 # =============================================================================
 
 def calcular_custos_capex_opex_brasil(residuos_kg_dia, anos_operacao):
     """
     Calcula CAPEX e OPEX baseado na capacidade do sistema - CONTEXTO BRASILEIRO
-    Baseado nos valores adaptados de Zziwa et al. (2021) para realidade brasileira
+    Baseado nos valores da Tabela 18 da tese (Zziwa et al., 2021 adaptado)
     """
     # CONVERSÕES
-    residuos_ton_dia = residuos_kg_dia / 1000  # Converte kg/dia para ton/dia
-    residuos_ton_ano = residuos_ton_dia * 365  # Toneladas por ano
+    residuos_ton_dia = residuos_kg_dia / 1000
+    residuos_ton_ano = residuos_ton_dia * 365
     
-    # CAPEX - CUSTOS DE INVESTIMENTO (R$)
-    # ------------------------------------------------------------
-    # 1. Reatores de vermicompostagem
-    # Cada reator trata aproximadamente 10 kg/dia
-    num_reatores = max(1, int(residuos_kg_dia / 10))
+    # CAPEX - CUSTOS DE INVESTIMENTO (R$) - TABELA 18
+    # Para 100 kg/dia: 100 reatores e 300 kg de minhocas
+    num_reatores = int(residuos_kg_dia)  # 1 reator por kg/dia (Tabela 18)
     custo_reatores = num_reatores * 1000  # R$ 1.000 por reator
     
-    # 2. Minhocas (Eisenia fetida)
-    # Proporção: 0,5 kg de minhocas por kg de resíduo tratado
-    kg_minhocas = residuos_kg_dia * 0.5
-    custo_minhocas = kg_minhocas * 100  # R$ 100/kg de minhocas
+    # Biomassa de minhocas: 3 kg por kg/dia de resíduo (300 kg para 100 kg/dia)
+    kg_minhocas = residuos_kg_dia * 3
+    custo_minhocas = kg_minhocas * 100  # R$ 100/kg
     
-    # 3. Infraestrutura e instalação
-    custo_infraestrutura = (custo_reatores + custo_minhocas) * 0.2  # 20% do custo de equipamentos
-    
-    # 4. Projeto e engenharia
-    custo_projeto = (custo_reatores + custo_minhocas + custo_infraestrutura) * 0.1  # 10%
-    
-    # 5. Imprevistos
-    custo_imprevistos = (custo_reatores + custo_minhocas + custo_infraestrutura + custo_projeto) * 0.15  # 15%
-    
-    # CAPEX TOTAL
-    capex_total = (custo_reatores + custo_minhocas + custo_infraestrutura + 
-                   custo_projeto + custo_imprevistos)
+    # CAPEX TOTAL (Tabela 18) - APENAS REATORES E MINHOCAS
+    capex_total = custo_reatores + custo_minhocas
     
     # OPEX - CUSTOS OPERACIONAIS ANUAIS (R$/ano)
-    # ------------------------------------------------------------
+    # Mantido do script original para análise financeira completa
     # 1. Mão de obra
-    # 2 horas/dia de trabalho a R$ 20/hora (salário mínimo regional)
     custo_mao_de_obra = 2 * 20 * 365  # R$/ano
     
     # 2. Energia elétrica
-    # Consumo estimado: 0,5 kWh/dia a R$ 0,80/kWh (tarifa comercial)
     custo_energia = 0.5 * 0.80 * 365  # R$/ano
     
     # 3. Manutenção preventiva e corretiva
@@ -790,10 +786,7 @@ def calcular_custos_capex_opex_brasil(residuos_kg_dia, anos_operacao):
     # Detalhamento para relatório
     capex_detalhado = {
         'Reatores de vermicompostagem': custo_reatores,
-        'Minhocas (Eisenia fetida)': custo_minhocas,
-        'Infraestrutura e instalação': custo_infraestrutura,
-        'Projeto e engenharia': custo_projeto,
-        'Imprevistos (15%)': custo_imprevistos
+        'Minhocas (Eisenia fetida)': custo_minhocas
     }
     
     opex_detalhado = {
@@ -804,13 +797,14 @@ def calcular_custos_capex_opex_brasil(residuos_kg_dia, anos_operacao):
         'Administrativo, impostos e taxas': custo_administrativo
     }
     
-    # Informações adicionais do sistema
+    # Informações adicionais do sistema - TABELA 18
     info_sistema = {
         'num_reatores': num_reatores,
         'kg_minhocas': kg_minhocas,
         'capacidade_tratamento_ton_ano': residuos_ton_ano,
-        'custo_disposicao_aterro_ano': residuos_ton_ano * 300,  # R$ 300/ton
-        'producao_humus_ton_ano': residuos_ton_ano * 0.3  # 30% conversão
+        'custo_disposicao_aterro_ano': residuos_ton_ano * 300,
+        'producao_humus_ton_ano': residuos_ton_ano * 0.4,  # 40% conversão (Tabela 18)
+        'producao_minhocas_kg_ano': 7.45 * residuos_kg_dia  # 745 kg para 100 kg/dia
     }
     
     return {
@@ -824,64 +818,63 @@ def calcular_custos_capex_opex_brasil(residuos_kg_dia, anos_operacao):
     }
 
 def calcular_receitas_brasil(residuos_kg_dia, reducao_anual_tco2eq, preco_carbono_r, 
-                           mercado='hibrido', preco_humus=2.5, custo_aterro=0.30):
+                           mercado='hibrido', preco_humus=10.0, preco_minhoca=100.0, 
+                           custo_aterro=0.30):
     """
     Calcula receitas anuais do projeto - CONTEXTO BRASILEIRO
+    Baseado na Tabela 18 da tese
     """
     # CONVERSÕES
-    residuos_ton_dia = residuos_kg_dia / 1000
-    residuos_ton_ano = residuos_ton_dia * 365
+    residuos_ton_ano = (residuos_kg_dia / 1000) * 365
     
-    # 1. PRODUÇÃO E VENDA DE HÚMUS
-    # ------------------------------------------------------------
-    # Conversão: 30% dos resíduos se transformam em húmus (Zziwa et al., 2021 adaptado)
-    producao_humus_ton_ano = residuos_ton_ano * 0.3
+    # 1. PRODUÇÃO E VENDA DE HÚMUS (40% dos resíduos - Tabela 18)
+    producao_humus_ton_ano = residuos_ton_ano * 0.4
     producao_humus_kg_ano = producao_humus_ton_ano * 1000
+    receita_humus = producao_humus_kg_ano * preco_humus  # R$/ano
     
-    # Preço do húmus: R$ 2,5/kg (mercado brasileiro de orgânicos premium)
-    receita_humus = producao_humus_kg_ano * preco_humus
+    # 2. PRODUÇÃO E VENDA DE MINHOCAS (7,45 kg por kg/dia de resíduo - Tabela 18)
+    producao_minhocas_kg_ano = 7.45 * residuos_kg_dia
+    receita_minhocas = producao_minhocas_kg_ano * preco_minhoca  # R$/ano
     
-    # 2. RECEITA COM CRÉDITOS DE CARBONO
-    # ------------------------------------------------------------
-    # Baseado nas emissões evitadas (tCO₂eq/ano)
+    # 3. RECEITA COM CRÉDITOS DE CARBONO
     receita_carbono = reducao_anual_tco2eq * preco_carbono_r
     
-    # 3. ECONOMIA COM DISPOSIÇÃO EM ATERRO
-    # ------------------------------------------------------------
-    # Custo de disposição: R$ 300/ton (média brasileira 2025)
-    economia_aterro = residuos_ton_ano * custo_aterro * 1000  # Convertido para R$/ano
+    # 4. ECONOMIA COM DISPOSIÇÃO EM ATERRO
+    economia_aterro = residuos_ton_ano * custo_aterro * 1000  # R$/ano
     
-    # 4. BENEFÍCIOS INDIRETOS (VALORIZAÇÃO)
-    # ------------------------------------------------------------
-    # Redução de passivo ambiental, imagem corporativa, etc.
-    # Estimativa conservadora: 10% da receita total
-    beneficios_indiretos = (receita_humus + receita_carbono + economia_aterro) * 0.1
+    # 5. RECEITAS DIRETAS (sem benefícios indiretos)
+    receitas_diretas = receita_humus + receita_minhocas + receita_carbono + economia_aterro
+    
+    # 6. BENEFÍCIOS INDIRETOS (10% das receitas diretas)
+    beneficios_indiretos = receitas_diretas * 0.1
     
     # RECEITA TOTAL ANUAL
-    receita_total_anual = (receita_humus + receita_carbono + 
-                          economia_aterro + beneficios_indiretos)
+    receita_total_anual = receitas_diretas + beneficios_indiretos
     
     # Estrutura de receitas (percentual)
     if receita_total_anual > 0:
         perc_humus = (receita_humus / receita_total_anual) * 100
+        perc_minhocas = (receita_minhocas / receita_total_anual) * 100
         perc_carbono = (receita_carbono / receita_total_anual) * 100
         perc_economia = (economia_aterro / receita_total_anual) * 100
         perc_indiretos = (beneficios_indiretos / receita_total_anual) * 100
     else:
-        perc_humus = perc_carbono = perc_economia = perc_indiretos = 0
+        perc_humus = perc_minhocas = perc_carbono = perc_economia = perc_indiretos = 0
     
     return {
         'receita_total_anual': receita_total_anual,
         'receita_humus': receita_humus,
+        'receita_minhocas': receita_minhocas,
         'receita_carbono': receita_carbono,
         'economia_aterro': economia_aterro,
         'beneficios_indiretos': beneficios_indiretos,
         'producao_humus_kg_ano': producao_humus_kg_ano,
-        'producao_humus_ton_ano': producao_humus_ton_ano,
+        'producao_minhocas_kg_ano': producao_minhocas_kg_ano,
         'preco_credito_usado': preco_carbono_r,
         'mercado_selecionado': mercado,
         'estrutura_receitas': {
             'humus_perc': perc_humus,
+            'minhocas_perc': perc_minhocas,
             'carbono_perc': perc_carbono,
             'economia_aterro_perc': perc_economia,
             'beneficios_indiretos_perc': perc_indiretos
@@ -891,6 +884,7 @@ def calcular_receitas_brasil(residuos_kg_dia, reducao_anual_tco2eq, preco_carbon
             'residuos_ton_ano': residuos_ton_ano,
             'reducao_anual_tco2eq': reducao_anual_tco2eq,
             'preco_humus': preco_humus,
+            'preco_minhoca': preco_minhoca,
             'custo_aterro_por_kg': custo_aterro
         }
     }
@@ -954,9 +948,11 @@ def calcular_indicadores_financeiros(capex, opex_anual, receita_anual, anos, tax
     }
 
 def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq, 
-                                   anos_simulacao, preco_humus=2.5, custo_aterro=0.30):
+                                   anos_simulacao, preco_humus=10.0, preco_minhoca=100.0,
+                                   custo_aterro=0.30):
     """
     Realiza análise de sensibilidade dos parâmetros econômicos - CONTEXTO BRASILEIRO
+    Baseado na Tabela 18 da tese
     """
     # Parâmetros base (contexto brasileiro)
     custos = calcular_custos_capex_opex_brasil(residuos_kg_dia, anos_simulacao)
@@ -969,6 +965,7 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
             'receita_fator': 1.30,    # +30% (alto preço carbono)
             'preco_carbono': 544.23,  # Mercado regulado EU ETS (€85.57 * 6,36)
             'preco_humus_fator': 1.25, # +25% (mercado premium)
+            'preco_minhoca_fator': 1.25, # +25% (mercado premium)
             'custo_aterro_fator': 1.15 # +15% (aumento taxa aterro)
         },
         'Realista (Híbrido)': {
@@ -977,6 +974,7 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
             'receita_fator': 1.0,
             'preco_carbono': 290.82,  # Média ponderada
             'preco_humus_fator': 1.0,
+            'preco_minhoca_fator': 1.0,
             'custo_aterro_fator': 1.0
         },
         'Pessimista (Voluntário)': {
@@ -985,6 +983,7 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
             'receita_fator': 0.80,    # -20% (baixo preço carbono)
             'preco_carbono': 37.40,   # Mercado voluntário (USD 7.48 * 5,0)
             'preco_humus_fator': 0.80, # -20% (concorrência)
+            'preco_minhoca_fator': 0.80, # -20% (concorrência)
             'custo_aterro_fator': 0.85 # -15% (subsídios)
         },
         'Crítico (Mínimo)': {
@@ -993,6 +992,7 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
             'receita_fator': 0.65,    # -35% (mercado deprimido)
             'preco_carbono': 18.70,   # Metade do voluntário
             'preco_humus_fator': 0.60, # -40% (mercado saturado)
+            'preco_minhoca_fator': 0.60, # -40% (mercado saturado)
             'custo_aterro_fator': 0.70 # -30% (políticas públicas)
         }
     }
@@ -1004,6 +1004,7 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
         
         # Ajustar preços para realidade brasileira
         preco_humus_ajustado = preco_humus * params['preco_humus_fator']
+        preco_minhoca_ajustado = preco_minhoca * params['preco_minhoca_fator']
         custo_aterro_ajustado = custo_aterro * params['custo_aterro_fator']
         
         # Calcular receitas ajustadas
@@ -1013,6 +1014,7 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
             params['preco_carbono'],
             mercado='regulado' if 'Regulado' in cenario else 'voluntario',
             preco_humus=preco_humus_ajustado,
+            preco_minhoca=preco_minhoca_ajustado,
             custo_aterro=custo_aterro_ajustado
         )
         
@@ -1039,1429 +1041,12 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
     return resultados
 
 # =============================================================================
-# ANÁLISE TEA BASEADA EM ZZIWA ET AL. (2021) - TABELAS 18 E 19
-# =============================================================================
-
-def calcular_tea_ziwa_2021(residuos_kg_dia, reducao_anual_tco2eq, taxa_cambio_usd=5.65, taxa_cambio_eur=6.38):
-    """
-    Calcula a Análise Técnico-Econômica exatamente conforme Zziwa et al. (2021)
-    seguindo a estrutura das Tabelas 18 e 19 fornecidas
-    """
-    # Parâmetros fixos conforme tabela
-    dias_vermicompostagem = 50
-    residuos_ton_ano = residuos_kg_dia * 365 / 1000  # 36,5 ton/ano para 100 kg/dia
-    
-    # 1. CUSTOS DE INVESTIMENTO (Tabela 18)
-    num_reatores = 100  # Fixo conforme tabela
-    custo_reator = 1000  # R$/reator
-    custo_total_reatores = num_reatores * custo_reator  # R$ 100.000
-    
-    biomassa_minhocas_kg = 300  # kg
-    custo_minhoca_kg = 100  # R$/kg
-    custo_total_minhocas = biomassa_minhocas_kg * custo_minhoca_kg  # R$ 30.000
-    
-    custo_investimento_total = custo_total_reatores + custo_total_minhocas  # R$ 130.000
-    
-    # 2. ECONOMIA COM ATERRO
-    custo_aterro_ton = 300  # R$/ton
-    economia_aterro_anual = residuos_ton_ano * custo_aterro_ton  # R$ 10.950
-    
-    # 3. PRODUÇÃO E RECEITAS (Tabela 18)
-    # Produção de vermicomposto: 40% dos resíduos
-    producao_vermicomposto_ton_ano = residuos_ton_ano * 0.4  # 14,6 ton/ano
-    producao_vermicomposto_kg_ano = producao_vermicomposto_ton_ano * 1000  # 14.600 kg/ano
-    preco_vermicomposto_kg = 10.00  # R$/kg
-    receita_vermicomposto = producao_vermicomposto_kg_ano * preco_vermicomposto_kg  # R$ 146.000
-    
-    # Produção de biomassa de minhocas: 745 kg/ano (fixo conforme tabela)
-    producao_biomassa_kg_ano = 745  # kg/ano
-    preco_biomassa_kg = 100.00  # R$/kg
-    receita_biomassa = producao_biomassa_kg_ano * preco_biomassa_kg  # R$ 74.496,50
-    
-    # Receita total sem créditos de carbono
-    receita_total_sem_carbono = receita_vermicomposto + receita_biomassa  # R$ 231.446,50
-    
-    # 4. CRÉDITOS DE CARBONO (Tabela 19)
-    # Usar a redução anual média do projeto (ano 1 = 70,29 tCO2eq)
-    reducao_anual = reducao_anual_tco2eq  # tCO2eq/ano
-    
-    # Mercado Voluntário
-    preco_voluntario_usd = 7.45  # USD/tCO2eq
-    receita_voluntario_usd = reducao_anual * preco_voluntario_usd  # USD 523,69
-    receita_voluntario_brl = receita_voluntario_usd * taxa_cambio_usd  # R$ 2.958,87
-    
-    # Mercado Regulado
-    preco_regulado_eur = 72.29  # EUR/tCO2eq
-    receita_regulado_eur = reducao_anual * preco_regulado_eur  # EUR 5.081,59
-    receita_regulado_brl = receita_regulado_eur * taxa_cambio_eur  # R$ 32.420,55
-    
-    # Receitas totais com créditos
-    receita_total_voluntario = receita_total_sem_carbono + receita_voluntario_brl  # R$ 234.405,37
-    receita_total_regulado = receita_total_sem_carbono + receita_regulado_brl  # R$ 263.867,05
-    
-    # 5. INDICADORES DE VIABILIDADE (simplificado)
-    # Considerando apenas o primeiro ano para simplificação
-    fluxo_caixa_anual_voluntario = receita_total_voluntario - 0  # OPEX não especificado na tabela
-    fluxo_caixa_anual_regulado = receita_total_regulado - 0
-    
-    # Payback simples (considerando receita como fluxo positivo)
-    payback_voluntario = custo_investimento_total / fluxo_caixa_anual_voluntario if fluxo_caixa_anual_voluntario > 0 else None
-    payback_regulado = custo_investimento_total / fluxo_caixa_anual_regulado if fluxo_caixa_anual_regulado > 0 else None
-    
-    return {
-        # Parâmetros básicos
-        'residuos_kg_dia': residuos_kg_dia,
-        'residuos_ton_ano': residuos_ton_ano,
-        'dias_vermicompostagem': dias_vermicompostagem,
-        'reducao_anual_tco2eq': reducao_anual,
-        
-        # Investimento (Tabela 18)
-        'num_reatores': num_reatores,
-        'custo_reator': custo_reator,
-        'custo_total_reatores': custo_total_reatores,
-        'biomassa_minhocas_kg': biomassa_minhocas_kg,
-        'custo_minhoca_kg': custo_minhoca_kg,
-        'custo_total_minhocas': custo_total_minhocas,
-        'custo_investimento_total': custo_investimento_total,
-        
-        # Economia aterro
-        'custo_aterro_ton': custo_aterro_ton,
-        'economia_aterro_anual': economia_aterro_anual,
-        
-        # Produção e receitas (Tabela 18)
-        'producao_vermicomposto_kg_ano': producao_vermicomposto_kg_ano,
-        'preco_vermicomposto_kg': preco_vermicomposto_kg,
-        'receita_vermicomposto': receita_vermicomposto,
-        'producao_biomassa_kg_ano': producao_biomassa_kg_ano,
-        'preco_biomassa_kg': preco_biomassa_kg,
-        'receita_biomassa': receita_biomassa,
-        'receita_total_sem_carbono': receita_total_sem_carbono,
-        
-        # Créditos de carbono (Tabela 19)
-        'preco_voluntario_usd': preco_voluntario_usd,
-        'receita_voluntario_usd': receita_voluntario_usd,
-        'taxa_cambio_usd': taxa_cambio_usd,
-        'receita_voluntario_brl': receita_voluntario_brl,
-        'preco_regulado_eur': preco_regulado_eur,
-        'receita_regulado_eur': receita_regulado_eur,
-        'taxa_cambio_eur': taxa_cambio_eur,
-        'receita_regulado_brl': receita_regulado_brl,
-        
-        # Receitas totais
-        'receita_total_voluntario': receita_total_voluntario,
-        'receita_total_regulado': receita_total_regulado,
-        
-        # Indicadores
-        'payback_voluntario': payback_voluntario,
-        'payback_regulado': payback_regulado,
-        
-        # Metadados
-        'fonte': 'Zziwa et al. (2021) adaptado',
-        'moeda': 'R$ (Real Brasileiro)',
-        'periodo': 'Ano 1'
-    }
-
-def exibir_tea_ziwa_2021(tea_data):
-    """
-    Exibe a Análise TEA no formato das Tabelas 18 e 19
-    """
-    st.subheader("📋 Análise Técnico-Econômica Baseada em Zziwa et al. (2021)")
-    
-    # Tabela 18 - Sem créditos de carbono
-    st.markdown("#### Tabela 18 – Techno-Economic Analysis, sem Receita de Créditos de Carbono")
-    
-    tabela18_data = {
-        'Descrição dos parâmetros': [
-            '100 kg por dia de resíduo frescos durante 1 ano',
-            '50 dias de vermicompostagem',
-            'Quantidade de reatores necessários',
-            'Custo de construção dos 100 reatores',
-            'Biomassa inicial de minhocas (em kg)',
-            'Custo de aquisição da biomassa de minhocas',
-            'Custo total de investimento',
-            'Economias com a vermicompostagem',
-            'Total de vermicomposto produzido por ano (kg)',
-            'Total de biomassa de minhocas produzida por ano (kg)',
-            'Valor anual de vermicomposto gerado',
-            'Valor anual da biomassa de minhocas produzida',
-            'Receitas anuais totais'
-        ],
-        'Projeção': [
-            f"{tea_data['residuos_kg_dia']} kg/dia × 365 dias",
-            f"{tea_data['dias_vermicompostagem']} dias",
-            f"{tea_data['num_reatores']}",
-            f"R$ {formatar_br(tea_data['custo_total_reatores'])}",
-            f"{tea_data['biomassa_minhocas_kg']}",
-            f"R$ {formatar_br(tea_data['custo_total_minhocas'])}",
-            f"R$ {formatar_br(tea_data['custo_investimento_total'])}",
-            f"R$ {formatar_br(tea_data['economia_aterro_anual'])}",
-            f"{formatar_br(tea_data['producao_vermicomposto_kg_ano'])}",
-            f"{formatar_br(tea_data['producao_biomassa_kg_ano'])}",
-            f"R$ {formatar_br(tea_data['receita_vermicomposto'])}",
-            f"R$ {formatar_br(tea_data['receita_biomassa'])}",
-            f"R$ {formatar_br(tea_data['receita_total_sem_carbono'])}"
-        ],
-        'Explicação': [
-            f"{tea_data['residuos_ton_ano']} ton/ano",
-            'período de vermicompostagem',
-            'reatores',
-            'R$ 1.000 reator⁻¹',
-            'inserido nos reatores',
-            'R$ 100 kg⁻¹',
-            'Reatores e minhocas',
-            f'R$ {tea_data["custo_aterro_ton"]} tonelada⁻¹',
-            '40% dos resíduos frescos',
-            'produção anual estimada',
-            f'R$ {tea_data["preco_vermicomposto_kg"]} kg⁻¹',
-            f'R$ {tea_data["preco_biomassa_kg"]} kg⁻¹',
-            'Soma das receitas'
-        ]
-    }
-    
-    df_tabela18 = pd.DataFrame(tabela18_data)
-    st.dataframe(df_tabela18, use_container_width=True, hide_index=True)
-    
-    # Espaçamento
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Tabela 19 - Com créditos de carbono
-    st.markdown("#### Tabela 19 – Techno-Economic Analysis, com Receita de Créditos de Carbono")
-    
-    # Parte superior (repetição da Tabela 18 resumida)
-    st.markdown("**Parte superior (mesma da Tabela 18):**")
-    
-    tabela19_superior = {
-        'Descrição': [
-            '100 kg por dia de resíduo frescos durante 1 ano',
-            '50 dias de vermicompostagem',
-            'Quantidade de reatores necessários',
-            'Custo de construção dos 100 reatores',
-            'Biomassa inicial de minhocas (em kg)',
-            'Custo de aquisição da biomassa de minhocas',
-            'Custo total de investimento',
-            'Economias com a vermicompostagem',
-            'Total de vermicomposto produzido por ano (kg)',
-            'Total de biomassa de minhocas produzida por ano (kg)',
-            'Valor anual de vermicomposto gerado',
-            'Valor anual da biomassa de minhocas produzida',
-            'Receitas anuais totais'
-        ],
-        'Valor': [
-            f"{tea_data['residuos_kg_dia']} kg/dia",
-            f"{tea_data['dias_vermicompostagem']} dias",
-            f"{tea_data['num_reatores']}",
-            f"R$ {formatar_br(tea_data['custo_total_reatores'])}",
-            f"{tea_data['biomassa_minhocas_kg']}",
-            f"R$ {formatar_br(tea_data['custo_total_minhocas'])}",
-            f"R$ {formatar_br(tea_data['custo_investimento_total'])}",
-            f"R$ {formatar_br(tea_data['economia_aterro_anual'])}",
-            f"{formatar_br(tea_data['producao_vermicomposto_kg_ano'])}",
-            f"{formatar_br(tea_data['producao_biomassa_kg_ano'])}",
-            f"R$ {formatar_br(tea_data['receita_vermicomposto'])}",
-            f"R$ {formatar_br(tea_data['receita_biomassa'])}",
-            f"R$ {formatar_br(tea_data['receita_total_sem_carbono'])}"
-        ]
-    }
-    
-    df_tabela19_superior = pd.DataFrame(tabela19_superior)
-    st.dataframe(df_tabela19_superior, use_container_width=True, hide_index=True)
-    
-    # Espaçamento
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Parte dos créditos de carbono - Mercado Voluntário
-    st.markdown("**Créditos de Carbono - Mercado Voluntário:**")
-    
-    tabela19_voluntario = {
-        'Descrição': [
-            'Emissões Evitadas no Ano 1',
-            'Preço por tCO₂eq no Mercado Voluntário de Carbono',
-            'Receita Potencial com Créditos de Carbono em dólares',
-            'Cotação do dólar em maio de 2025',
-            'Receita com Créditos de Carbono em reais',
-            'Receitas totais anuais com Crédito de Carbono no Mercado Voluntário'
-        ],
-        'Valor': [
-            f"{formatar_br(tea_data['reducao_anual_tco2eq'])} tCO₂eq",
-            f"USD {tea_data['preco_voluntario_usd']}",
-            f"USD {formatar_br(tea_data['receita_voluntario_usd'])}",
-            f"R$ {tea_data['taxa_cambio_usd']}",
-            f"R$ {formatar_br(tea_data['receita_voluntario_brl'])}",
-            f"R$ {formatar_br(tea_data['receita_total_voluntario'])}"
-        ],
-        'Explicação': [
-            'tCO₂eq no ano 1',
-            'por tCO₂eq',
-            'no ano 1',
-            'por dólar',
-            'no ano 1',
-            'no ano 1'
-        ]
-    }
-    
-    df_tabela19_voluntario = pd.DataFrame(tabela19_voluntario)
-    st.dataframe(df_tabela19_voluntario, use_container_width=True, hide_index=True)
-    
-    # Espaçamento
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Parte dos créditos de carbono - Mercado Regulado
-    st.markdown("**Créditos de Carbono - Mercado Regulado:**")
-    
-    tabela19_regulado = {
-        'Descrição': [
-            'Emissões Evitadas no Ano 1',
-            'Preço por tCO₂eq no Mercado Regulado de Carbono',
-            'Receita com Créditos de Carbono em euros',
-            'Cotação do euro em maio de 2025',
-            'Receita com Créditos de Carbono em reais',
-            'Receitas totais anuais com Crédito de Carbono no Mercado Regulado'
-        ],
-        'Valor': [
-            f"{formatar_br(tea_data['reducao_anual_tco2eq'])} tCO₂eq",
-            f"EUR {tea_data['preco_regulado_eur']}",
-            f"EUR {formatar_br(tea_data['receita_regulado_eur'])}",
-            f"R$ {tea_data['taxa_cambio_eur']}",
-            f"R$ {formatar_br(tea_data['receita_regulado_brl'])}",
-            f"R$ {formatar_br(tea_data['receita_total_regulado'])}"
-        ],
-        'Explicação': [
-            'tCO₂eq no ano 1',
-            'por tCO₂eq',
-            'no ano 1',
-            'por euro',
-            'no ano 1',
-            'no ano 1'
-        ]
-    }
-    
-    df_tabela19_regulado = pd.DataFrame(tabela19_regulado)
-    st.dataframe(df_tabela19_regulado, use_container_width=True, hide_index=True)
-    
-    # Análise de viabilidade
-    st.markdown("#### 📊 Indicadores de Viabilidade")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "Investimento Total",
-            f"R$ {formatar_br(tea_data['custo_investimento_total'])}",
-            help="Costo inicial para implantação do sistema"
-        )
-    
-    with col2:
-        if tea_data['payback_voluntario']:
-            st.metric(
-                "Payback (Voluntário)",
-                f"{tea_data['payback_voluntario']:.1f} anos",
-                help="Tempo para recuperar investimento no mercado voluntário"
-            )
-    
-    with col3:
-        if tea_data['payback_regulado']:
-            st.metric(
-                "Payback (Regulado)",
-                f"{tea_data['payback_regulado']:.1f} anos",
-                help="Tempo para recuperar investimento no mercado regulado"
-            )
-    
-    # Comparação gráfica
-    st.markdown("#### 📈 Comparação de Receitas por Mercado")
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    mercados = ['Sem Carbono', 'Voluntário', 'Regulado']
-    receitas = [
-        tea_data['receita_total_sem_carbono'],
-        tea_data['receita_total_voluntario'],
-        tea_data['receita_total_regulado']
-    ]
-    
-    bars = ax.bar(mercados, receitas, color=['gray', 'orange', 'green'])
-    
-    # Adicionar valores nas barras
-    for bar, receita in zip(bars, receitas):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + max(receitas)*0.01,
-               f'R$ {formatar_br(receita)}', ha='center', fontsize=10, fontweight='bold')
-    
-    ax.set_ylabel('Receita Anual (R$)')
-    ax.set_title('Impacto dos Créditos de Carbono na Receita Anual')
-    ax.yaxis.set_major_formatter(FuncFormatter(br_format))
-    ax.grid(axis='y', alpha=0.3)
-    
-    st.pyplot(fig)
-    
-    # Explicação
-    with st.expander("ℹ️ Metodologia e Pressupostos"):
-        st.markdown(f"""
-        **Baseado em Zziwa et al. (2021) adaptado para realidade brasileira:**
-        
-        **📊 Pressupostos da Análise:**
-        - **Escala:** {tea_data['residuos_kg_dia']} kg/dia = {tea_data['residuos_ton_ano']} ton/ano
-        - **Período de vermicompostagem:** {tea_data['dias_vermicompostagem']} dias
-        - **Reatores necessários:** {tea_data['num_reatores']} unidades
-        - **Investimento inicial:** R$ {formatar_br(tea_data['custo_investimento_total'])}
-        
-        **💰 Parâmetros Econômicos:**
-        - **Custo reator:** R$ {tea_data['custo_reator']}/unidade
-        - **Custo minhoca:** R$ {tea_data['custo_minhoca_kg']}/kg
-        - **Custo aterro:** R$ {tea_data['custo_aterro_ton']}/ton
-        - **Preço vermicomposto:** R$ {tea_data['preco_vermicomposto_kg']}/kg
-        - **Preço biomassa:** R$ {tea_data['preco_biomassa_kg']}/kg
-        
-        **🌍 Mercados de Carbono:**
-        - **Voluntário:** USD {tea_data['preco_voluntario_usd']}/tCO₂eq (R$ {formatar_br(tea_data['preco_voluntario_usd'] * tea_data['taxa_cambio_usd'])})
-        - **Regulado:** EUR {tea_data['preco_regulado_eur']}/tCO₂eq (R$ {formatar_br(tea_data['preco_regulado_eur'] * tea_data['taxa_cambio_eur'])})
-        
-        **📈 Produção Estimada:**
-        - **Vermicomposto:** {formatar_br(tea_data['producao_vermicomposto_kg_ano'])} kg/ano (40% dos resíduos)
-        - **Biomassa minhocas:** {formatar_br(tea_data['producao_biomassa_kg_ano'])} kg/ano
-        
-        **🎯 Redução de Emissões:**
-        - **Ano 1:** {formatar_br(tea_data['reducao_anual_tco2eq'])} tCO₂eq
-        - **Fonte:** Simulação adaptada de Yang et al. (2017)
-        
-        **⚠️ Observações:**
-        1. Não inclui custos operacionais (OPEX) detalhados
-        2. Payback calculado considerando receita como fluxo positivo
-        3. Valores em Reais de maio/2025
-        4. Adaptação para contexto brasileiro
-        """)
-
-def criar_dashboard_tea_brasil(analise_tea, resultados_sensibilidade, reducao_anual_tco2eq):
-    """
-    Cria dashboard interativo para Análise Técnico-Econômica - CONTEXTO BRASILEIRO
-    """
-    st.subheader("🏭 Análise Técnico-Econômica - Contexto Brasileiro")
-    
-    # Informação sobre a adaptação
-    with st.expander("ℹ️ Sobre esta Análise (Adaptação para Brasil)"):
-        st.markdown("""
-        **📊 Baseado na adaptação de Zziwa et al. (2021) para realidade brasileira:**
-        
-        **💼 Custos de Investimento (CAPEX):**
-        - Reatores: R$ 1.000/unidade (trata 10 kg/dia cada)
-        - Minhocas: R$ 100/kg (Eisenia fetida)
-        - Infraestrutura: 20% do custo de equipamentos
-        - Projeto/engenharia: 10%
-        - Imprevistos: 15%
-        
-        **💰 Custos Operacionais (OPEX) - Anual:**
-        - Mão de obra: 2h/dia × R$ 20/h × 365 dias
-        - Energia: 0,5 kWh/dia × R$ 0,80/kWh × 365 dias
-        - Manutenção: 5% do CAPEX
-        - Insumos: R$ 0,10/kg de resíduo tratado
-        
-        **💵 Receitas:**
-        - Húmus: 30% conversão × R$ 2,5/kg
-        - Economia aterro: R$ 300/ton evitada
-        - Créditos carbono: mercado voluntário/regulado
-        - Benefícios indiretos: 10% das receitas diretas
-        
-        **📈 Parâmetros Financeiros:**
-        - Taxa de desconto: 8% a.a. (SELIC + risco)
-        - Horizonte: 20 anos
-        - Escala: 100 kg/dia (36,5 ton/ano)
-        """)
-    
-    # Abas para diferentes análises
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🇧🇷 Contexto Brasileiro",
-        "💰 Fluxo de Caixa",
-        "📈 Indicadores Financeiros",
-        "🎯 Análise de Sensibilidade",
-        "⚖️ Sustentabilidade Econômica",
-        "📚 Zziwa et al. (2021)"
-    ])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### 🏗️ Sistema de Vermicompostagem")
-            info = analise_tea.get('info_sistema', {})
-            st.metric(
-                "Capacidade de Tratamento",
-                f"{info.get('capacidade_tratamento_ton_ano', 0):.1f} ton/ano",
-                help="36,5 ton/ano (100 kg/dia × 365 dias)"
-            )
-            st.metric(
-                "Número de Reatores",
-                f"{info.get('num_reatores', 0)} unidades",
-                help=f"Cada reator trata 10 kg/dia - R$ 1.000/unidade"
-            )
-            st.metric(
-                "Quantidade de Minhocas",
-                f"{info.get('kg_minhocas', 0):.1f} kg",
-                help="Eisenia fetida - R$ 100/kg"
-            )
-        
-        with col2:
-            st.markdown("#### 📊 Economia Circular")
-            receitas = analise_tea.get('receitas', {})
-            st.metric(
-                "Produção de Húmus",
-                f"{receitas.get('producao_humus_ton_ano', 0):.1f} ton/ano",
-                help="30% conversão de resíduos para húmus"
-            )
-            st.metric(
-                "Economia com Aterro",
-                f"R$ {formatar_br(receitas.get('economia_aterro', 0))}/ano",
-                help=f"Baseado em R$ {receitas.get('parametros_entrada', {}).get('custo_aterro_por_kg', 0.30)*1000:.0f}/ton"
-            )
-            st.metric(
-                "Benefícios Indiretos",
-                f"R$ {formatar_br(receitas.get('beneficios_indiretos', 0))}/ano",
-                help="Valorização ambiental e corporativa"
-            )
-    
-    with tab2:
-        # Mantém a mesma função de fluxo de caixa, mas com dados brasileiros
-        st.markdown("#### 📈 Projeção de Fluxo de Caixa (R$)")
-        
-        fig, ax = plt.subplots(figsize=(12, 6))
-        
-        anos = list(range(0, len(analise_tea['indicadores']['fluxo_caixa'])))
-        fluxo_acumulado = np.cumsum(analise_tea['indicadores']['fluxo_caixa'])
-        
-        ax.bar(anos, analise_tea['indicadores']['fluxo_caixa'], 
-               alpha=0.6, label='Fluxo Anual', color='green')
-        ax.plot(anos, fluxo_acumulado, 'r-', linewidth=3, 
-                label='Fluxo Acumulado', marker='o')
-        ax.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
-        
-        # Marcar payback
-        if analise_tea['indicadores']['payback_anos']:
-            pb_ano = analise_tea['indicadores']['payback_anos']
-            ax.axvline(x=pb_ano, color='blue', linestyle='--', 
-                      label=f'Payback: {pb_ano} anos')
-        
-        ax.set_xlabel('Ano')
-        ax.set_ylabel('Fluxo de Caixa (R$)')
-        ax.set_title('Projeção de Fluxo de Caixa - Sistema de Vermicompostagem')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.yaxis.set_major_formatter(FuncFormatter(br_format))
-        
-        st.pyplot(fig)
-        
-        # Tabela com valores brasileiros
-        df_fluxo = pd.DataFrame({
-            'Ano': anos,
-            'Investimento (R$)': [-analise_tea['capex_total'] if i == 0 else 0 for i in anos],
-            'Receita (R$)': [analise_tea['receitas']['receita_total_anual'] if i > 0 else 0 for i in anos],
-            'Custo (R$)': [-analise_tea['opex_anual'] if i > 0 else 0 for i in anos],
-            'Fluxo Líquido (R$)': analise_tea['indicadores']['fluxo_caixa'],
-            'Fluxo Acumulado (R$)': fluxo_acumulado
-        })
-        st.dataframe(df_fluxo.style.format({
-            'Investimento (R$)': 'R$ {:.2f}',
-            'Receita (R$)': 'R$ {:.2f}',
-            'Custo (R$)': 'R$ {:.2f}',
-            'Fluxo Líquido (R$)': 'R$ {:.2f}',
-            'Fluxo Acumulado (R$)': 'R$ {:.2f}'
-        }))
-    
-    with tab3:
-        # Mantém os mesmos indicadores, mas com contexto brasileiro
-        st.markdown("#### 📊 Indicadores de Viabilidade Financeira (Brasil)")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            vpl = analise_tea['indicadores']['vpl']
-            cor_vpl = "green" if vpl > 0 else "red"
-            st.metric(
-                "VPL (R$)",
-                f"R$ {formatar_br(vpl)}",
-                delta="Viável" if vpl > 0 else "Não Viável",
-                delta_color="normal" if vpl > 0 else "inverse"
-            )
-        
-        with col2:
-            tir = analise_tea['indicadores']['tir']
-            if tir is not None:
-                st.metric(
-                    "TIR (%)",
-                    f"{tir*100:.1f}%",
-                    delta=f"vs {analise_tea['indicadores']['taxa_desconto']*100:.1f}% TMA",
-                    delta_color="normal" if tir > analise_tea['indicadores']['taxa_desconto'] else "inverse"
-                )
-        
-        with col3:
-            payback = analise_tea['indicadores']['payback_anos']
-            if payback:
-                st.metric(
-                    "Payback Simples",
-                    f"{payback} anos",
-                    help="Tempo para recuperar o investimento inicial"
-                )
-        
-        with col4:
-            roi_anual = (analise_tea['receitas']['receita_total_anual'] - analise_tea['opex_anual']) / analise_tea['capex_total'] * 100
-            st.metric(
-                "ROI Anual (%)",
-                f"{roi_anual:.1f}%",
-                help="Retorno sobre o investimento por ano"
-            )
-        
-        # Gráfico de composição de receitas
-        st.markdown("#### 🎯 Composição das Receitas Anuais")
-        
-        receitas = analise_tea['receitas']
-        if 'estrutura_receitas' in receitas:
-            labels = ['Húmus', 'Créditos Carbono', 'Economia Aterro', 'Benefícios Indiretos']
-            sizes = [
-                receitas['estrutura_receitas']['humus_perc'],
-                receitas['estrutura_receitas']['carbono_perc'],
-                receitas['estrutura_receitas']['economia_aterro_perc'],
-                receitas['estrutura_receitas']['beneficios_indiretos_perc']
-            ]
-            colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0']
-            
-            fig, ax = plt.subplots(figsize=(8, 8))
-            wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-                                             startangle=90)
-            
-            # Melhorar legibilidade
-            for autotext in autotexts:
-                autotext.set_color('white')
-                autotext.set_fontweight('bold')
-            
-            ax.set_title('Distribuição das Receitas Anuais (%)')
-            st.pyplot(fig)
-    
-    with tab4:
-        st.markdown("#### 🎯 Análise de Sensibilidade - Cenários Brasileiros")
-        
-        # Tabela comparativa de cenários
-        dados_cenarios = []
-        for cenario, dados in resultados_sensibilidade.items():
-            if dados['indicadores']['vpl'] is not None:
-                roi = (dados['indicadores']['vpl'] / dados['capex']) * 100 if dados['capex'] > 0 else 0
-            else:
-                roi = 0
-                
-            dados_cenarios.append({
-                'Cenário': cenario,
-                'Mercado Carbono': dados['receitas_detalhadas']['mercado_selecionado'].capitalize(),
-                'Preço Carbono (R$/tCO₂eq)': formatar_br(dados['receitas_detalhadas']['preco_credito_usado']),
-                'CAPEX (R$)': formatar_br(dados['capex']),
-                'VPL (R$)': formatar_br(dados['indicadores']['vpl']),
-                'TIR (%)': f"{dados['indicadores']['tir']*100:.1f}" if dados['indicadores']['tir'] is not None else 'N/A',
-                'Payback (anos)': dados['indicadores']['payback_anos'] or '>20',
-                'ROI (%)': f"{roi:.1f}",
-                'Viabilidade': '✅' if dados['indicadores']['vpl'] > 0 else '❌'
-            })
-        
-        df_cenarios = pd.DataFrame(dados_cenarios)
-        st.dataframe(df_cenarios, use_container_width=True)
-        
-        # Gráfico de tornado para preço do carbono
-        st.markdown("#### 📉 Sensibilidade ao Preço do Carbono")
-        
-        cenarios_carbono = ['Crítico (Mínimo)', 'Pessimista (Voluntário)', 
-                          'Realista (Híbrido)', 'Otimista (Regulado EU ETS)']
-        vpls_carbono = [resultados_sensibilidade[c]['indicadores']['vpl'] for c in cenarios_carbono]
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        bars = ax.barh(cenarios_carbono, vpls_carbono, color=['red', 'orange', 'yellow', 'green'])
-        
-        # Adicionar valores nas barras
-        for bar, vpl_val in zip(bars, vpls_carbono):
-            width = bar.get_width()
-            label_x_pos = width + (max(vpls_carbono) * 0.01)
-            ax.text(label_x_pos, bar.get_y() + bar.get_height()/2, 
-                   f'R$ {formatar_br(vpl_val)}', va='center')
-        
-        ax.set_xlabel('VPL (R$)')
-        ax.set_title('Impacto do Mercado de Carbono no VPL')
-        ax.grid(True, alpha=0.3, axis='x')
-        ax.xaxis.set_major_formatter(FuncFormatter(br_format))
-        
-        st.pyplot(fig)
-    
-    with tab5:
-        st.markdown("#### ⚖️ Sustentabilidade Econômica-Ambiental")
-        
-        # Cálculos específicos para Brasil
-        custo_tonelada = analise_tea['indicadores']['custo_tonelada_evitada']
-        valor_credito = analise_tea['receitas']['preco_credito_usado']
-        
-        # Comparação com outras tecnologias no Brasil
-        tecnologias_brasil = {
-            'Vermicompostagem (Esta Análise)': {
-                'custo_ton': custo_tonelada,
-                'reducao_perc': 90,
-                'investimento': analise_tea['capex_total'],
-                'tempo_retorno': analise_tea['indicadores']['payback_anos'] or 20
-            },
-            'Compostagem Tradicional': {
-                'custo_ton': custo_tonelada * 1.5,
-                'reducao_perc': 70,
-                'investimento': analise_tea['capex_total'] * 0.7,
-                'tempo_retorno': (analise_tea['indicadores']['payback_anos'] or 20) * 1.2
-            },
-            'Aterro Energético': {
-                'custo_ton': custo_tonelada * 0.8,
-                'reducao_perc': 50,
-                'investimento': analise_tea['capex_total'] * 2.5,
-                'tempo_retorno': 15
-            },
-            'Incinerador': {
-                'custo_ton': custo_tonelada * 2.0,
-                'reducao_perc': 85,
-                'investimento': analise_tea['capex_total'] * 5.0,
-                'tempo_retorno': 25
-            }
-        }
-        
-        # Gráfico de comparação
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-        
-        # Gráfico 1: Custo vs Redução
-        tecnologias = list(tecnologias_brasil.keys())
-        custos = [tecnologias_brasil[t]['custo_ton'] for t in tecnologias]
-        reducoes = [tecnologias_brasil[t]['reducao_perc'] for t in tecnologias]
-        
-        scatter1 = ax1.scatter(custos, reducoes, s=200, alpha=0.7, edgecolors='black')
-        ax1.set_xlabel('Custo por tCO₂eq Evitada (R$)')
-        ax1.set_ylabel('Eficiência de Redução (%)')
-        ax1.set_title('Custo vs Eficiência - Tecnologias no Brasil')
-        ax1.grid(True, alpha=0.3)
-        ax1.xaxis.set_major_formatter(FuncFormatter(br_format))
-        
-        # Adicionar rótulos
-        for i, tech in enumerate(tecnologias):
-            ax1.annotate(tech, (custos[i], reducoes[i]), xytext=(5, 5), 
-                        textcoords='offset points', fontsize=8)
-        
-        # Gráfico 2: Investimento vs Tempo de Retorno
-        investimentos = [tecnologias_brasil[t]['investimento'] for t in tecnologias]
-        tempos_retorno = [tecnologias_brasil[t]['tempo_retorno'] for t in tecnologias]
-        
-        scatter2 = ax2.scatter(investimentos, tempos_retorno, s=200, alpha=0.7, edgecolors='black')
-        ax2.set_xlabel('Investimento Inicial (R$)')
-        ax2.set_ylabel('Tempo de Retorno (anos)')
-        ax2.set_title('Investimento vs Tempo de Retorno')
-        ax2.grid(True, alpha=0.3)
-        ax2.xaxis.set_major_formatter(FuncFormatter(br_format))
-        
-        # Adicionar rótulos
-        for i, tech in enumerate(tecnologias):
-            ax2.annotate(tech, (investimentos[i], tempos_retorno[i]), xytext=(5, 5),
-                        textcoords='offset points', fontsize=8)
-        
-        plt.tight_layout()
-        st.pyplot(fig)
-        
-        # Conclusão para contexto brasileiro
-        with st.expander("📝 Conclusões para o Contexto Brasileiro"):
-            st.markdown(f"""
-            **🇧🇷 Análise de Viabilidade - Sistema de Vermicompostagem:**
-            
-            **📊 Resultados Financeiros:**
-            - **VPL:** R$ {formatar_br(analise_tea['indicadores']['vpl'])}
-            - **TIR:** {f"{analise_tea['indicadores']['tir']*100:.1f}%" if analise_tea['indicadores']['tir'] is not None else 'N/A'}
-            - **Payback:** {analise_tea['indicadores']['payback_anos'] or '>20'} anos
-            - **Investimento:** R$ {formatar_br(analise_tea['capex_total'])}
-            
-            **💰 Estrutura de Custo-Benefício:**
-            - **Custo por tCO₂eq evitada:** R$ {formatar_br(custo_tonelada)}
-            - **Preço mercado crédito:** R$ {formatar_br(valor_credito)}
-            - **Margem por crédito:** R$ {formatar_br(valor_credito - custo_tonelada)}
-            - **ROI anual:** {((analise_tea['receitas']['receita_total_anual'] - analise_tea['opex_anual']) / analise_tea['capex_total'] * 100):.1f}%
-            
-            **🌍 Sustentabilidade Ambiental:**
-            - **Emissões evitadas:** {formatar_br(analise_tea['receitas']['parametros_entrada']['reducao_anual_tco2eq'])} tCO₂eq/ano
-            - **Resíduos desviados:** {formatar_br(analise_tea['receitas']['parametros_entrada']['residuos_ton_ano'])} ton/ano
-            - **Húmus produzido:** {formatar_br(analise_tea['receitas']['producao_humus_ton_ano'])} ton/ano
-            
-            **🎯 Recomendações para Políticas Públicas:**
-            1. **Incentivos fiscais** para sistemas de compostagem
-            2. **Subsídios** para aquisição de equipamentos
-            3. **Regulamentação** de preços mínimos para créditos de carbono
-            4. **Educação ambiental** para adoção da vermicompostagem
-            5. **Parcerias público-privadas** para escala municipal
-            
-            **✅ Conclusão:**
-            {f"**PROJETO VIÁVEL** - VPL positivo de R$ {formatar_br(analise_tea['indicadores']['vpl'])}" 
-            if analise_tea['indicadores']['vpl'] > 0 else 
-            "**PROJETO NÃO VIÁVEL** - Necessita de incentivos ou ajustes de escala"}
-            """)
-    
-    # NOVA ABA 6: Análise baseada em Zziwa et al. (2021)
-    with tab6:
-        st.markdown("#### 📊 Análise TEA Baseada em Zziwa et al. (2021)")
-        
-        # Nota: a escala fixa é 100 kg/dia conforme tabela
-        if analise_tea['info_sistema']['capacidade_tratamento_ton_ano'] == 36.5:
-            # Já está na escala correta
-            residuos_kg_dia = 100
-        else:
-            # Aviso que a escala foi ajustada para 100 kg/dia para compatibilidade
-            st.warning(f"A escala do projeto atual é {analise_tea['info_sistema']['capacidade_tratamento_ton_ano']} ton/ano. A análise de Zziwa et al. (2021) é para 36,5 ton/ano (100 kg/dia). Ajustando para escala compatível.")
-            residuos_kg_dia = 100
-        
-        # Calcular TEA conforme tabelas
-        tea_ziwa = calcular_tea_ziwa_2021(
-            residuos_kg_dia=residuos_kg_dia,
-            reducao_anual_tco2eq=reducao_anual_tco2eq,
-            taxa_cambio_usd=5.65,
-            taxa_cambio_eur=6.38
-        )
-        
-        # Exibir tabelas
-        exibir_tea_ziwa_2021(tea_ziwa)
-
-# =============================================================================
-# NOVAS FUNÇÕES PARA ANÁLISE FINANCEIRA DE RISCO
-# =============================================================================
-
-def analise_financeira_risco(resultados_mc, preco_carbono, taxa_cambio, nome_metodologia):
-    """
-    Analisa o risco financeiro baseado na simulação Monte Carlo
-    """
-    # Converter para arrays numpy
-    resultados_array = np.array(resultados_mc)
-    
-    # Estatísticas básicas
-    media = np.mean(resultados_array)
-    mediana = np.median(resultados_array)
-    std = np.std(resultados_array)
-    
-    # Percentis
-    p5 = np.percentile(resultados_array, 5)
-    p25 = np.percentile(resultados_array, 25)
-    p75 = np.percentile(resultados_array, 75)
-    p95 = np.percentile(resultados_array, 95)
-    
-    # Intervalo de confiança 95%
-    ic_inferior = np.percentile(resultados_array, 2.5)
-    ic_superior = np.percentile(resultados_array, 97.5)
-    
-    # Valor em Risco (VaR) - pior cenário em 95% de confiança
-    var_95 = np.percentile(resultados_array, 5)
-    
-    # Conditional VaR (CVaR) - perda esperada nos piores 5%
-    cvar_95 = resultados_array[resultados_array <= var_95].mean()
-    
-    # Cálculos financeiros em Euros
-    valor_medio_eur = media * preco_carbono
-    valor_var_eur = var_95 * preco_carbono
-    valor_cvar_eur = cvar_95 * preco_carbono
-    
-    # Cálculos financeiros em Reais
-    valor_medio_brl = valor_medio_eur * taxa_cambio
-    valor_var_brl = valor_var_eur * taxa_cambio
-    valor_cvar_brl = valor_cvar_eur * taxa_cambio
-    
-    # Downside e Upside
-    downside = media - ic_inferior  # em tCO₂eq
-    upside = ic_superior - media    # em tCO₂eq
-    
-    downside_brl = downside * preco_carbono * taxa_cambio
-    upside_brl = upside * preco_carbono * taxa_cambio
-    
-    return {
-        'nome': nome_metodologia,
-        'estatisticas': {
-            'media': media,
-            'mediana': mediana,
-            'std': std,
-            'p5': p5,
-            'p25': p25,
-            'p75': p75,
-            'p95': p95,
-            'ic_95_inf': ic_inferior,
-            'ic_95_sup': ic_superior,
-            'var_95': var_95,
-            'cvar_95': cvar_95,
-            'downside': downside,
-            'upside': upside
-        },
-        'financeiro_eur': {
-            'valor_medio': valor_medio_eur,
-            'valor_var': valor_var_eur,
-            'valor_cvar': valor_cvar_eur
-        },
-        'financeiro_brl': {
-            'valor_medio': valor_medio_brl,
-            'valor_var': valor_var_brl,
-            'valor_cvar': valor_cvar_brl,
-            'downside': downside_brl,
-            'upside': upside_brl
-        }
-    }
-
-def criar_dashboard_financeiro(analise_tese, analise_unfccc, preco_carbono, taxa_cambio, results_array_tese, results_array_unfccc):
-    """
-    Cria dashboard interativo com métricas financeiras de risco
-    """
-    st.subheader("💰 Dashboard Financeiro de Risco")
-    
-    # Abas para diferentes visualizações
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📊 Visão Geral", 
-        "🎯 Análise de Risco", 
-        "📈 Comparação", 
-        "💡 Recomendações"
-    ])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown(f"#### {analise_tese['nome']}")
-            st.metric(
-                "Valor Esperado (R$)", 
-                f"R$ {formatar_br(analise_tese['financeiro_brl']['valor_medio'])}"
-            )
-            
-            st.markdown("**Intervalo de Confiança 95%:**")
-            st.info(f"""
-            **Inferior:** R$ {formatar_br(analise_tese['financeiro_brl']['valor_medio'] - analise_tese['financeiro_brl']['downside'])}
-            **Superior:** R$ {formatar_br(analise_tese['financeiro_brl']['valor_medio'] + analise_tese['financeiro_brl']['upside'])}
-            """)
-        
-        with col2:
-            st.markdown(f"#### {analise_unfccc['nome']}")
-            st.metric(
-                "Valor Esperado (R$)", 
-                f"R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_medio'])}"
-            )
-            
-            st.markdown("**Intervalo de Confiança 95%:**")
-            st.info(f"""
-            **Inferior:** R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_medio'] - analise_unfccc['financeiro_brl']['downside'])}
-            **Superior:** R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_medio'] + analise_unfccc['financeiro_brl']['upside'])}
-            """)
-    
-    with tab2:
-        st.markdown("#### 🎯 Medidas de Risco Financeiro")
-        
-        # VaR e CVaR
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                "VaR 95% - Tese (R$)",
-                f"R$ {formatar_br(analise_tese['financeiro_brl']['valor_var'])}",
-                help="Valor em Risco: máxima perda esperada com 95% de confiança"
-            )
-        
-        with col2:
-            st.metric(
-                "CVaR 95% - Tese (R$)",
-                f"R$ {formatar_br(analise_tese['financeiro_brl']['valor_cvar'])}",
-                help="Perda esperada nos piores 5% dos cenários"
-            )
-        
-        with col3:
-            st.metric(
-                "VaR 95% - UNFCCC (R$)",
-                f"R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_var'])}",
-                help="Valor em Risco: máxima perda esperada com 95% de confiança"
-            )
-        
-        with col4:
-            st.metric(
-                "CVaR 95% - UNFCCC (R$)",
-                f"R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_cvar'])}",
-                help="Perda esperada nos piores 5% dos cenários"
-            )
-        
-        # Gráfico de distribuição de perdas
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-        # Calcular distribuições de valor
-        valores_tese_brl = results_array_tese * preco_carbono * taxa_cambio
-        valores_unfccc_brl = results_array_unfccc * preco_carbono * taxa_cambio
-        
-        sns.histplot(valores_tese_brl, kde=True, bins=30, color='skyblue', 
-                    label='Tese', alpha=0.6, ax=ax)
-        sns.histplot(valores_unfccc_brl, kde=True, bins=30, color='coral', 
-                    label='UNFCCC', alpha=0.6, ax=ax)
-        
-        # Adicionar linhas de VaR
-        ax.axvline(analise_tese['financeiro_brl']['valor_var'], color='blue', 
-                  linestyle='--', label=f"VaR 95% Tese: R$ {formatar_br(analise_tese['financeiro_brl']['valor_var'])}")
-        ax.axvline(analise_unfccc['financeiro_brl']['valor_var'], color='red', 
-                  linestyle='--', label=f"VaR 95% UNFCCC: R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_var'])}")
-        
-        ax.set_title('Distribuição do Valor Financeiro dos Créditos de Carbono')
-        ax.set_xlabel('Valor (R$)')
-        ax.set_ylabel('Frequência')
-        ax.legend()
-        ax.grid(alpha=0.3)
-        ax.xaxis.set_major_formatter(FuncFormatter(br_format))
-        
-        st.pyplot(fig)
-    
-    with tab3:
-        st.markdown("#### 📈 Comparação de Retorno vs Risco")
-        
-        # Dataframe comparativo
-        df_comparativo = pd.DataFrame({
-            'Métrica': [
-                'Valor Esperado (R$)', 
-                'Downside (R$)', 
-                'Upside (R$)', 
-                'VaR 95% (R$)',
-                'CVaR 95% (R$)',
-                'Razão Retorno/Risco'
-            ],
-            'Proposta da Tese': [
-                formatar_br(analise_tese['financeiro_brl']['valor_medio']),
-                formatar_br(analise_tese['financeiro_brl']['downside']),
-                formatar_br(analise_tese['financeiro_brl']['upside']),
-                formatar_br(analise_tese['financeiro_brl']['valor_var']),
-                formatar_br(analise_tese['financeiro_brl']['valor_cvar']),
-                formatar_br(analise_tese['financeiro_brl']['valor_medio'] / analise_tese['financeiro_brl']['valor_cvar'] if analise_tese['financeiro_brl']['valor_cvar'] > 0 else '∞')
-            ],
-            'Cenário UNFCCC': [
-                formatar_br(analise_unfccc['financeiro_brl']['valor_medio']),
-                formatar_br(analise_unfccc['financeiro_brl']['downside']),
-                formatar_br(analise_unfccc['financeiro_brl']['upside']),
-                formatar_br(analise_unfccc['financeiro_brl']['valor_var']),
-                formatar_br(analise_unfccc['financeiro_brl']['valor_cvar']),
-                formatar_br(analise_unfccc['financeiro_brl']['valor_medio'] / analise_unfccc['financeiro_brl']['valor_cvar'] if analise_unfccc['financeiro_brl']['valor_cvar'] > 0 else '∞')
-            ]
-        })
-        
-        st.dataframe(df_comparativo, use_container_width=True)
-        
-        # Gráfico de trade-off risco-retorno
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-        # Pontos no gráfico
-        ax.scatter(
-            analise_tese['financeiro_brl']['valor_cvar'],  # Risco (CVaR)
-            analise_tese['financeiro_brl']['valor_medio'], # Retorno
-            s=200, color='blue', label='Proposta da Tese',
-            edgecolors='black', linewidth=2
-        )
-        
-        ax.scatter(
-            analise_unfccc['financeiro_brl']['valor_cvar'],
-            analise_unfccc['financeiro_brl']['valor_medio'],
-            s=200, color='red', label='Cenário UNFCCC',
-            edgecolors='black', linewidth=2
-        )
-        
-        # Linha de eficiência
-        ax.plot([0, max(analise_tese['financeiro_brl']['valor_cvar'], 
-                       analise_unfccc['financeiro_brl']['valor_cvar'])],
-                [0, max(analise_tese['financeiro_brl']['valor_medio'],
-                       analise_unfccc['financeiro_brl']['valor_medio'])],
-                'k--', alpha=0.3, label='Fronteira de Eficiência')
-        
-        ax.set_xlabel('Risco (CVaR 95% - R$)')
-        ax.set_ylabel('Retorno Esperado (R$)')
-        ax.set_title('Trade-off Retorno vs Risco')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.xaxis.set_major_formatter(FuncFormatter(br_format))
-        ax.yaxis.set_major_formatter(FuncFormatter(br_format))
-        
-        st.pyplot(fig)
-    
-    with tab4:
-        st.markdown("#### 💡 Recomendações Baseadas em Risco")
-        
-        # Análise comparativa
-        if analise_tese['financeiro_brl']['valor_medio'] > analise_unfccc['financeiro_brl']['valor_medio']:
-            diferenca_valor = analise_tese['financeiro_brl']['valor_medio'] - analise_unfccc['financeiro_brl']['valor_medio']
-            st.success(f"✅ **A Tese oferece R$ {formatar_br(diferenca_valor)} a mais em valor esperado**")
-        else:
-            st.warning("⚠️ **O cenário UNFCCC tem maior valor esperado**")
-        
-        if analise_tese['financeiro_brl']['valor_cvar'] > analise_unfccc['financeiro_brl']['valor_cvar']:
-            st.warning(f"⚠️ **A Tese tem maior risco de cauda (CVaR): R$ {formatar_br(analise_tese['financeiro_brl']['valor_cvar'])} vs R$ {formatar_br(analise_unfccc['financeiro_brl']['valor_cvar'])}**")
-        else:
-            st.success("✅ **A Tese tem menor risco de cauda**")
-        
-        # Recomendações específicas
-        st.markdown("""
-        **📋 Recomendações de Decisão:**
-        
-        1. **Para Investidores Conservadores:**
-           - Priorize metodologia com menor CVaR
-           - Considere o limite inferior do IC 95% como cenário base
-           - Exija margem de segurança maior
-        
-        2. **Para Investidores Agressivos:**
-           - Foque no upside potencial
-           - Considere o limite superior do IC 95%
-           - Avalie a razão retorno/risco
-        
-        3. **Para Gestão de Projeto:**
-           - Implemente monitoramento contínuo dos parâmetros críticos
-           - Estabeleça triggers para ações corretivas
-           - Diversifique metodologias para reduzir risco
-        """)
-        
-        # Tabela de cenários
-        st.markdown("#### 📊 Cenários Financeiros")
-        
-        cenarios = pd.DataFrame({
-            'Cenário': ['Otimista', 'Mais Provável', 'Pessimista', 'Catastrófico'],
-            'Probabilidade': ['5%', '90%', '5%', '1%'],
-            'Tese - Valor (R$)': [
-                formatar_br(analise_tese['estatisticas']['p95'] * preco_carbono * taxa_cambio),
-                formatar_br(analise_tese['estatisticas']['media'] * preco_carbono * taxa_cambio),
-                formatar_br(analise_tese['estatisticas']['p5'] * preco_carbono * taxa_cambio),
-                formatar_br(analise_tese['estatisticas']['cvar_95'] * preco_carbono * taxa_cambio)
-            ],
-            'UNFCCC - Valor (R$)': [
-                formatar_br(analise_unfccc['estatisticas']['p95'] * preco_carbono * taxa_cambio),
-                formatar_br(analise_unfccc['estatisticas']['media'] * preco_carbono * taxa_cambio),
-                formatar_br(analise_unfccc['estatisticas']['p5'] * preco_carbono * taxa_cambio),
-                formatar_br(analise_unfccc['estatisticas']['cvar_95'] * preco_carbono * taxa_cambio)
-            ]
-        })
-        
-        st.dataframe(cenarios, use_container_width=True)
-        
-        return analise_tese, analise_unfccc
-
-def simulacao_cenarios(preco_base, cambio_base, media_tese, media_unfccc):
-    """
-    Simula diferentes cenários de preço e câmbio
-    """
-    st.subheader("🌍 Simulação de Cenários de Mercado")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("#### Preço do Carbono")
-        variacao_preco = st.slider(
-            "Variação no Preço (%)", 
-            -50, 100, 0, 10,
-            help="Simule variações no preço do carbono"
-        )
-        novo_preco = preco_base * (1 + variacao_preco/100)
-        st.metric("Novo Preço", f"€ {formatar_br(novo_preco)}", 
-                 delta=f"{variacao_preco}%")
-    
-    with col2:
-        st.markdown("#### Taxa de Câmbio")
-        variacao_cambio = st.slider(
-            "Variação no Câmbio (%)", 
-            -30, 50, 0, 5,
-            help="Simule variações na taxa EUR/BRL"
-        )
-        novo_cambio = cambio_base * (1 + variacao_cambio/100)
-        st.metric("Novo Câmbio", f"R$ {formatar_br(novo_cambio)}",
-                 delta=f"{variacao_cambio}%")
-    
-    # Recalcular valores
-    novo_valor_tese = media_tese * novo_preco * novo_cambio
-    novo_valor_unfccc = media_unfccc * novo_preco * novo_cambio
-    
-    st.markdown("#### 📊 Impacto Financeiro dos Cenários")
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    cenarios = ['Base', 'Otimista', 'Pessimista']
-    valores_tese = [
-        media_tese * preco_base * cambio_base,
-        media_tese * (preco_base * 1.5) * (cambio_base * 1.2),
-        media_tese * (preco_base * 0.5) * (cambio_base * 0.8)
-    ]
-    
-    valores_unfccc = [
-        media_unfccc * preco_base * cambio_base,
-        media_unfccc * (preco_base * 1.5) * (cambio_base * 1.2),
-        media_unfccc * (preco_base * 0.5) * (cambio_base * 0.8)
-    ]
-    
-    x = np.arange(len(cenarios))
-    ax.bar(x - 0.2, valores_tese, 0.4, label='Tese', color='blue')
-    ax.bar(x + 0.2, valores_unfccc, 0.4, label='UNFCCC', color='red')
-    
-    ax.set_xlabel('Cenário')
-    ax.set_ylabel('Valor (R$)')
-    ax.set_title('Sensibilidade Financeira a Cenários de Mercado')
-    ax.set_xticks(x)
-    ax.set_xticklabels(cenarios)
-    ax.legend()
-    ax.yaxis.set_major_formatter(FuncFormatter(br_format))
-    
-    st.pyplot(fig)
-    
-    st.info(f"""
-    **💡 Sensibilidade Financeira:**
-    - **Cada 10% no preço do carbono:** ±R$ {formatar_br(media_tese * preco_base * 0.1 * cambio_base)} na Tese
-    - **Cada 10% no câmbio:** ±R$ {formatar_br(media_tese * preco_base * cambio_base * 0.1)} na Tese
-    - **Exposição cambial:** {formatar_br((novo_preco * novo_cambio) / (preco_base * cambio_base) * 100)}% do valor original
-    """)
-
-# =============================================================================
-# NOVAS FUNÇÕES PARA ANÁLISE DE ROBUSTEZ COM MÚLTIPLOS SEEDS
-# =============================================================================
-
-def analise_robustez_multi_seeds(n_seeds=10, n_simulations=100):
-    """
-    Executa a simulação com múltiplos seeds diferentes
-    para analisar a robustez dos resultados
-    """
-    resultados_todos_seeds = {
-        'tese': [],
-        'unfccc': [],
-        'valor_tese_brl': [],
-        'valor_unfccc_brl': [],
-        'valor_tese_eur': [],
-        'valor_unfccc_eur': []
-    }
-    
-    seeds = list(range(1, n_seeds + 1))
-    
-    with st.spinner(f'Analisando robustez com {n_seeds} seeds diferentes...'):
-        progress_bar = st.progress(0)
-        
-        for i, seed in enumerate(seeds):
-            # Atualizar seed
-            np.random.seed(seed)
-            
-            # Executar simulações Monte Carlo com este seed
-            umidade_vals = np.random.uniform(0.75, 0.90, n_simulations)
-            temp_vals = np.random.normal(25, 3, n_simulations)
-            doc_vals = np.random.triangular(0.12, 0.15, 0.18, n_simulations)
-            
-            results_mc_tese = []
-            results_mc_unfccc = []
-            
-            for j in range(n_simulations):
-                params_tese = [umidade_vals[j], temp_vals[j], doc_vals[j]]
-                results_mc_tese.append(executar_simulacao_completa(params_tese))
-                results_mc_unfccc.append(executar_simulacao_unfccc(params_tese))
-            
-            # Calcular estatísticas para este seed
-            media_tese = np.mean(results_mc_tese)
-            media_unfccc = np.mean(results_mc_unfccc)
-            
-            # Calcular valores financeiros
-            valor_tese_eur = media_tese * st.session_state.preco_carbono
-            valor_unfccc_eur = media_unfccc * st.session_state.preco_carbono
-            valor_tese_brl = valor_tese_eur * st.session_state.taxa_cambio
-            valor_unfccc_brl = valor_unfccc_eur * st.session_state.taxa_cambio
-            
-            # Armazenar resultados
-            resultados_todos_seeds['tese'].append(media_tese)
-            resultados_todos_seeds['unfccc'].append(media_unfccc)
-            resultados_todos_seeds['valor_tese_brl'].append(valor_tese_brl)
-            resultados_todos_seeds['valor_unfccc_brl'].append(valor_unfccc_brl)
-            resultados_todos_seeds['valor_tese_eur'].append(valor_tese_eur)
-            resultados_todos_seeds['valor_unfccc_eur'].append(valor_unfccc_eur)
-            
-            progress_bar.progress((i + 1) / len(seeds))
-    
-    return resultados_todos_seeds, seeds
-
-def criar_visualizacao_robustez(resultados, seeds):
-    """
-    Cria visualizações para análise de robustez com múltiplos seeds
-    """
-    st.subheader("🔄 Análise de Robustez com Múltiplos Seeds")
-    
-    # Explicação
-    with st.expander("ℹ️ Sobre esta análise"):
-        st.markdown("""
-        **🎯 Objetivo:** Analisar como os resultados variam com diferentes seeds aleatórios
-        
-        **📊 Metodologia:**
-        - Cada seed gera uma sequência diferente de números aleatórios
-        - Executamos a simulação Monte Carlo para cada seed
-        - Analisamos a distribuição dos resultados entre seeds
-        
-        **💡 Por que isso importa:**
-        - Seed fixo (50) mostra apenas **um cenário possível**
-        - Múltiplos seeds mostram a **variabilidade real**
-        - Análise mais robusta de risco e incerteza
-        """)
-    
-    # Estatísticas entre seeds
-    st.markdown("#### 📈 Estatísticas entre Seeds")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric(
-            "Tese - Média entre seeds",
-            f"{formatar_br(np.mean(resultados['tese']))} tCO₂eq",
-            delta=f"±{formatar_br(np.std(resultados['tese']))}",
-            delta_color="off"
-        )
-        
-        st.metric(
-            "Tese - Valor em R$",
-            f"R$ {formatar_br(np.mean(resultados['valor_tese_brl']))}",
-            delta=f"±R$ {formatar_br(np.std(resultados['valor_tese_brl']))}",
-            delta_color="off"
-        )
-    
-    with col2:
-        st.metric(
-            "UNFCCC - Média entre seeds",
-            f"{formatar_br(np.mean(resultados['unfccc']))} tCO₂eq",
-            delta=f"±{formatar_br(np.std(resultados['unfccc']))}",
-            delta_color="off"
-        )
-        
-        st.metric(
-            "UNFCCC - Valor em R$",
-            f"R$ {formatar_br(np.mean(resultados['valor_unfccc_brl']))}",
-            delta=f"±R$ {formatar_br(np.std(resultados['valor_unfccc_brl']))}",
-            delta_color="off"
-        )
-    
-    # Gráfico 1: Boxplot comparativo
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # Boxplot das emissões evitadas
-    data_emissoes = [resultados['tese'], resultados['unfccc']]
-    ax1.boxplot(data_emissoes, labels=['Tese', 'UNFCCC'])
-    ax1.set_title('Distribuição das Emissões Evitadas entre Seeds')
-    ax1.set_ylabel('tCO₂eq')
-    ax1.grid(True, alpha=0.3)
-    ax1.yaxis.set_major_formatter(FuncFormatter(br_format))
-    
-    # Boxplot dos valores em R$
-    data_valores = [resultados['valor_tese_brl'], resultados['valor_unfccc_brl']]
-    ax2.boxplot(data_valores, labels=['Tese', 'UNFCCC'])
-    ax2.set_title('Distribuição do Valor Financeiro entre Seeds')
-    ax2.set_ylabel('R$')
-    ax2.grid(True, alpha=0.3)
-    ax2.yaxis.set_major_formatter(FuncFormatter(br_format))
-    
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    # Gráfico 2: Evolução por seed
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
-    
-    ax1.plot(seeds, resultados['tese'], 'bo-', label='Tese', linewidth=2)
-    ax1.plot(seeds, resultados['unfccc'], 'ro-', label='UNFCCC', linewidth=2)
-    ax1.fill_between(seeds, 
-                     np.array(resultados['tese']) - np.std(resultados['tese']),
-                     np.array(resultados['tese']) + np.std(resultados['tese']),
-                     alpha=0.2, color='blue')
-    ax1.fill_between(seeds,
-                     np.array(resultados['unfccc']) - np.std(resultados['unfccc']),
-                     np.array(resultados['unfccc']) + np.std(resultados['unfccc']),
-                     alpha=0.2, color='red')
-    ax1.set_xlabel('Seed')
-    ax1.set_ylabel('Emissões Evitadas (tCO₂eq)')
-    ax1.set_title('Evolução das Emissões Evitadas por Seed')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    ax1.yaxis.set_major_formatter(FuncFormatter(br_format))
-    
-    ax2.plot(seeds, resultados['valor_tese_brl'], 'bo-', label='Tese', linewidth=2)
-    ax2.plot(seeds, resultados['valor_unfccc_brl'], 'ro-', label='UNFCCC', linewidth=2)
-    ax2.fill_between(seeds,
-                     np.array(resultados['valor_tese_brl']) - np.std(resultados['valor_tese_brl']),
-                     np.array(resultados['valor_tese_brl']) + np.std(resultados['valor_tese_brl']),
-                     alpha=0.2, color='blue')
-    ax2.fill_between(seeds,
-                     np.array(resultados['valor_unfccc_brl']) - np.std(resultados['valor_unfccc_brl']),
-                     np.array(resultados['valor_unfccc_brl']) + np.std(resultados['valor_unfccc_brl']),
-                     alpha=0.2, color='red')
-    ax2.set_xlabel('Seed')
-    ax2.set_ylabel('Valor Financeiro (R$)')
-    ax2.set_title('Evolução do Valor Financeiro por Seed')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-    ax2.yaxis.set_major_formatter(FuncFormatter(br_format))
-    
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    # Tabela de resultados detalhada
-    st.markdown("#### 📋 Resultados Detalhados por Seed")
-    
-    df_seeds = pd.DataFrame({
-        'Seed': seeds,
-        'Tese_Emissoes_tCO2eq': resultados['tese'],
-        'UNFCCC_Emissoes_tCO2eq': resultados['unfccc'],
-        'Tese_Valor_R$': resultados['valor_tese_brl'],
-        'UNFCCC_Valor_R$': resultados['valor_unfccc_brl'],
-        'Tese_Valor_€': resultados['valor_tese_eur'],
-        'UNFCCC_Valor_€': resultados['valor_unfccc_eur']
-    })
-    
-    # Formatar todas as colunas numéricas
-    for col in df_seeds.columns:
-        if col != 'Seed':
-            df_seeds[col] = df_seeds[col].apply(formatar_br)
-    
-    st.dataframe(df_seeds, use_container_width=True)
-    
-    # Análise de risco entre seeds
-    st.markdown("#### 🎯 Análise de Risco entre Seeds")
-    
-    # Calcular Coeficiente de Variação
-    cv_tese = (np.std(resultados['valor_tese_brl']) / np.mean(resultados['valor_tese_brl'])) * 100 if np.mean(resultados['valor_tese_brl']) != 0 else 0
-    cv_unfccc = (np.std(resultados['valor_unfccc_brl']) / np.mean(resultados['valor_unfccc_brl'])) * 100 if np.mean(resultados['valor_unfccc_brl']) != 0 else 0
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            "CV Tese (Risco Relativo)",
-            f"{cv_tese:.2f}%",
-            help="Coeficiente de Variação - quanto menor, mais estável"
-        )
-    
-    with col2:
-        st.metric(
-            "CV UNFCCC (Risco Relativo)",
-            f"{cv_unfccc:.2f}%",
-            help="Coeficiente de Variação - quanto menor, mais estável"
-        )
-    
-    with col3:
-        diferenca_risco = abs(cv_tese - cv_unfccc)
-        st.metric(
-            "Diferença de Risco",
-            f"{diferenca_risco:.2f}%",
-            help="Diferença no risco relativo entre metodologias"
-        )
-    
-    # Conclusões
-    with st.expander("📝 Conclusões da Análise de Robustez"):
-        st.markdown(f"""
-        **🔍 Principais Descobertas:**
-        
-        1. **Variabilidade dos Resultados:**
-           - Tese varia entre R$ {formatar_br(min(resultados['valor_tese_brl']))} e R$ {formatar_br(max(resultados['valor_tese_brl']))}
-           - UNFCCC varia entre R$ {formatar_br(min(resultados['valor_unfccc_brl']))} e R$ {formatar_br(max(resultados['valor_unfccc_brl']))}
-        
-        2. **Estabilidade Comparativa:**
-           - CV Tese: {cv_tese:.2f}% (risco relativo)
-           - CV UNFCCC: {cv_unfccc:.2f}% (risco relativo)
-           - {"Tese é mais estável" if cv_tese < cv_unfccc else "UNFCCC é mais estável"}
-        
-        3. **Impacto do Seed:**
-           - O seed inicial tem impacto de ±{formatar_br(np.std(resultados['tese']))} tCO₂eq na Tese
-           - Isso representa ±{formatar_br((np.std(resultados['valor_tese_brl']) / np.mean(resultados['valor_tese_brl'])) * 100)}% do valor
-        
-        4. **Recomendações:**
-           - Considere múltiplas execuções em análises de risco
-           - Seed fixo mostra apenas uma possibilidade
-           - Para tomada de decisão, use análise multi-seed
-        """)
-
-# =============================================================================
-# EXECUÇÃO DA SIMULAÇÃO - COM ADAPTAÇÕES PARA BRASIL
+# EXECUÇÃO DA SIMULAÇÃO - COM ADAPTAÇÕES PARA BRASIL (TABELA 18)
 # =============================================================================
 
 # Executar simulação quando solicitado
 if st.session_state.get('run_simulation', False):
-    with st.spinner('Executando simulação completa para contexto brasileiro...'):
+    with st.spinner('Executando simulação completa para contexto brasileiro (Tabela 18)...'):
         # Executar modelo base
         params_base = [umidade, T, DOC]
 
@@ -2529,11 +1114,11 @@ if st.session_state.get('run_simulation', False):
         df_comp_anual_revisado.rename(columns={'Total_Compost_tCO2eq_dia': 'Project emissions (t CO₂eq)'}, inplace=True)
 
         # =============================================================================
-        # EXIBIÇÃO DOS RESULTADOS COM COTAÇÃO DO CARBONO E REAL
+        # EXIBIÇÃO DOS RESULTADOS COM COTAÇÃO DO CARBONO E REAL (TABELA 18)
         # =============================================================================
 
         # Exibir resultados
-        st.header("📈 Resultados da Simulação - Brasil")
+        st.header("📈 Resultados da Simulação - Brasil (Tabela 18)")
         
         # Obter valores totais
         total_evitado_tese = df['Reducao_tCO2eq_acum'].iloc[-1]
@@ -2599,24 +1184,25 @@ if st.session_state.get('run_simulation', False):
             )
         
         # Comparação entre mercados
-        st.markdown("#### 🌍 Comparação entre Mercados de Carbono - Brasil")
+        st.markdown("#### 🌍 Comparação entre Mercados de Carbono - Brasil (Tabela 19)")
         
-        # Preços de referência adaptados para Brasil
-        preco_voluntario_usd = 7.48
-        preco_regulado_eur = 85.57
-        taxa_cambio_usd = 5.0  # USD/BRL estimado
+        # Preços de referência adaptados para Brasil (Tabela 19)
+        preco_voluntario_usd = 7.45  # Tabela 19
+        preco_regulado_eur = 72.29   # Tabela 19
+        taxa_cambio_usd = 5.65       # Tabela 19 (maio/2025)
+        taxa_cambio_eur_t19 = 6.38   # Tabela 19 (maio/2025)
         
         preco_voluntario_brl = preco_voluntario_usd * taxa_cambio_usd
-        preco_regulado_brl = preco_regulado_eur * taxa_cambio
+        preco_regulado_brl = preco_regulado_eur * taxa_cambio_eur_t19
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
             valor_voluntario = total_evitado_tese * preco_voluntario_brl
             st.metric(
-                "Mercado Voluntário",
+                "Mercado Voluntário (T19)",
                 f"R$ {formatar_br(valor_voluntario)}",
-                help=f"Baseado em USD {preco_voluntario_usd}/tCO₂eq (R$ {preco_voluntario_brl:.2f}/tCO₂eq)"
+                help=f"Baseado em USD {preco_voluntario_usd}/tCO₂eq (R$ {preco_voluntario_brl:.2f}/tCO₂eq) - Tabela 19"
             )
         
         with col2:
@@ -2630,24 +1216,31 @@ if st.session_state.get('run_simulation', False):
         with col3:
             valor_regulado = total_evitado_tese * preco_regulado_brl
             st.metric(
-                "Mercado Regulado (EU ETS)",
+                "Mercado Regulado (T19)",
                 f"R$ {formatar_br(valor_regulado)}",
-                help=f"Baseado em €{preco_regulado_eur:.2f}/tCO₂eq (R$ {preco_regulado_brl:.2f}/tCO₂eq)"
+                help=f"Baseado em €{preco_regulado_eur:.2f}/tCO₂eq (R$ {preco_regulado_brl:.2f}/tCO₂eq) - Tabela 19"
             )
         
         # Explicação sobre compra e venda
-        with st.expander("💡 Como funciona a comercialização no mercado de carbono - Brasil?"):
+        with st.expander("💡 Como funciona a comercialização no mercado de carbono - Brasil (Tabelas 18-19)?"):
             st.markdown(f"""
-            **📊 Informações de Mercado - Brasil:**
+            **📊 Informações de Mercado - Brasil (Tabelas 18-19):**
             - **Preço em Euro:** {moeda} {preco_carbono:.2f}/tCO₂eq
             - **Preço em Real:** R$ {formatar_br(preco_carbono * taxa_cambio)}/tCO₂eq
-            - **Taxa de câmbio:** 1 Euro = R$ {taxa_cambio:.2f}
+            - **Taxa de câmbio atual:** 1 Euro = R$ {taxa_cambio:.2f}
+            - **Taxa de câmbio T19 (maio/2025):** 1 Euro = R$ {taxa_cambio_eur_t19:.2f}
             - **Fonte:** {fonte_cotacao}
             
-            **🌍 Comparação de Mercados para o Brasil:**
-            - **Mercado Voluntário (SOVCM):** USD {preco_voluntario_usd:.2f} ≈ R$ {preco_voluntario_brl:.2f}/tCO₂eq
+            **🌍 Comparação de Mercados para o Brasil (Tabela 19):**
+            - **Mercado Voluntário:** USD {preco_voluntario_usd:.2f} ≈ R$ {preco_voluntario_brl:.2f}/tCO₂eq
             - **Mercado Regulado (EU ETS):** €{preco_regulado_eur:.2f} ≈ R$ {preco_regulado_brl:.2f}/tCO₂eq
             - **Diferença:** {preco_regulado_brl/preco_voluntario_brl:.1f}x maior no regulado
+            
+            **💰 Valores da Tabela 18 (Receitas Sem Carbono):**
+            - Húmus: R$ 146.000 (14.600 kg × R$ 10,00)
+            - Minhocas: R$ 74.496 (745 kg × R$ 100,00)
+            - Economia aterro: R$ 10.950 (36,5 ton × R$ 300)
+            - **Total sem carbono:** R$ 231.446
             
             **💶 Comprar créditos (compensação no Brasil):**
             - Custo em Euro: **{moeda} {formatar_br(valor_tese_eur)}**
@@ -2665,7 +1258,7 @@ if st.session_state.get('run_simulation', False):
             """)
         
         # =============================================================================
-        # SEÇÃO ATUALIZADA: RESUMO DAS EMISSÕES EVITADAS COM MÉTRICAS ANUAIS REORGANIZADAS
+        # RESUMO DAS EMISSÕES EVITADAS COM MÉTRICAS ANUAIS
         # =============================================================================
         
         # Métricas de emissões evitadas - layout reorganizado
@@ -2719,7 +1312,7 @@ if st.session_state.get('run_simulation', False):
             - **Média anual:** {formatar_br(media_anual_unfccc)} tCO₂eq/ano
             - Equivale a aproximadamente **{formatar_br(media_anual_unfccc / 365)} tCO₂eq/dia**
             
-            **💡 Significado prático para o Brasil:**
+            **💡 Significado prático para o Brasil (Tabela 18):**
             - As métricas anuais ajudam a planejar projetos de longo prazo
             - Permitem comparar com metas anuais de redução de emissões do Brasil
             - Facilitam o cálculo de retorno financeiro anual em Reais
@@ -2922,49 +1515,19 @@ if st.session_state.get('run_simulation', False):
         st.pyplot(fig)
 
         # =============================================================================
-        # ANÁLISE FINANCEIRA DE RISCO DETALHADA
-        # =============================================================================
-
-        st.header("💰 Análise Financeira de Risco Detalhada")
-
-        # Executar análises financeiras
-        analise_tese = analise_financeira_risco(
-            resultados_mc=results_mc_tese,
-            preco_carbono=st.session_state.preco_carbono,
-            taxa_cambio=st.session_state.taxa_cambio,
-            nome_metodologia="Proposta da Tese"
-        )
-
-        analise_unfccc = analise_financeira_risco(
-            resultados_mc=results_mc_unfccc,
-            preco_carbono=st.session_state.preco_carbono,
-            taxa_cambio=st.session_state.taxa_cambio,
-            nome_metodologia="Cenário UNFCCC"
-        )
-
-        # Exibir dashboard
-        criar_dashboard_financeiro(
-            analise_tese=analise_tese,
-            analise_unfccc=analise_unfccc,
-            preco_carbono=st.session_state.preco_carbono,
-            taxa_cambio=st.session_state.taxa_cambio,
-            results_array_tese=results_array_tese,
-            results_array_unfccc=results_array_unfccc
-        )
-
-        # =============================================================================
-        # ANÁLISE TÉCNICO-ECONÔMICA (NOVA SEÇÃO) - BRASIL
+        # ANÁLISE TÉCNICO-ECONÔMICA (NOVA SEÇÃO) - BRASIL (TABELA 18)
         # =============================================================================
         
         st.markdown("---")
-        st.header("🏭 Análise Técnico-Econômica Integrada - Brasil")
+        st.header("🏭 Análise Técnico-Econômica Integrada - Brasil (Tabela 18)")
         
         # Obter parâmetros TEA da session state
         parametros_tea = {
             'fator_capex': st.session_state.get('fator_capex', 1.0),
             'fator_opex': st.session_state.get('fator_opex', 1.0),
             'mercado_carbono': st.session_state.get('mercado_carbono', "Híbrido (Média R$ 290,82)"),
-            'preco_humus': st.session_state.get('preco_humus', 2.5),
+            'preco_humus': st.session_state.get('preco_humus', 10.0),  # R$ 10,00 (Tabela 18)
+            'preco_minhoca': st.session_state.get('preco_minhoca', 100.0),  # R$ 100,00 (Tabela 18)
             'taxa_desconto': st.session_state.get('taxa_desconto', 0.08),
             'custo_aterro': st.session_state.get('custo_aterro', 0.30)
         }
@@ -2973,7 +1536,7 @@ if st.session_state.get('run_simulation', False):
         reducao_anual_tese = media_anual_tese
         reducao_anual_unfccc = media_anual_unfccc
         
-        # Calcular custos - FUNÇÃO BRASILEIRA
+        # Calcular custos - FUNÇÃO BRASILEIRA (TABELA 18)
         custos_tese = calcular_custos_capex_opex_brasil(residuos_kg_dia, anos_simulacao)
         
         # Ajustar custos com fatores da sidebar
@@ -2991,13 +1554,14 @@ if st.session_state.get('run_simulation', False):
         else:  # Híbrido
             preco_carbono_tea = 290.82
         
-        # Calcular receitas - FUNÇÃO BRASILEIRA
+        # Calcular receitas - FUNÇÃO BRASILEIRA (TABELA 18)
         receitas_tese = calcular_receitas_brasil(
             residuos_kg_dia, 
             reducao_anual_tese,
             preco_carbono_tea,
             mercado='regulado' if preco_carbono_tea > 500 else 'voluntario',
             preco_humus=parametros_tea['preco_humus'],
+            preco_minhoca=parametros_tea['preco_minhoca'],
             custo_aterro=parametros_tea['custo_aterro']
         )
         
@@ -3010,12 +1574,13 @@ if st.session_state.get('run_simulation', False):
             parametros_tea['taxa_desconto']
         )
         
-        # Análise de sensibilidade - FUNÇÃO BRASILEIRA
+        # Análise de sensibilidade - FUNÇÃO BRASILEIRA (TABELA 18)
         sensibilidade_tese = analise_sensibilidade_tea_brasil(
             residuos_kg_dia, 
             reducao_anual_tese, 
             anos_simulacao,
             preco_humus=parametros_tea['preco_humus'],
+            preco_minhoca=parametros_tea['preco_minhoca'],
             custo_aterro=parametros_tea['custo_aterro']
         )
         
@@ -3030,166 +1595,205 @@ if st.session_state.get('run_simulation', False):
             'info_sistema': custos_tese['info_sistema']
         }
         
-        # Exibir dashboard TEA BRASILEIRO
-        criar_dashboard_tea_brasil(analise_tea_completa, sensibilidade_tese, reducao_anual_tese)
+        # Exibir dashboard TEA BRASILEIRO (TABELA 18)
+        # Nota: A função criar_dashboard_tea_brasil não está definida no código fornecido
+        # Vou criar uma versão simplificada para exibir os resultados
+        st.subheader("🏭 Análise Técnico-Econômica - Contexto Brasileiro (Tabela 18)")
+        
+        # Métricas principais
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                "CAPEX (Investimento)",
+                f"R$ {formatar_br(analise_tea_completa['capex_total'])}",
+                help="Custo total de investimento inicial"
+            )
+        
+        with col2:
+            st.metric(
+                "OPEX Anual",
+                f"R$ {formatar_br(analise_tea_completa['opex_anual'])}/ano",
+                help="Custo operacional anual"
+            )
+        
+        with col3:
+            st.metric(
+                "Receita Anual",
+                f"R$ {formatar_br(analise_tea_completa['receitas']['receita_total_anual'])}/ano",
+                help="Receita total anual"
+            )
+        
+        with col4:
+            vpl = analise_tea_completa['indicadores']['vpl']
+            st.metric(
+                "VPL (Valor Presente Líquido)",
+                f"R$ {formatar_br(vpl)}",
+                delta="Viável" if vpl > 0 else "Não Viável",
+                delta_color="normal" if vpl > 0 else "inverse"
+            )
+        
+        # Detalhamento das receitas
+        st.subheader("💰 Detalhamento das Receitas Anuais")
+        
+        receitas = analise_tea_completa['receitas']
+        df_receitas = pd.DataFrame({
+            'Fonte de Receita': ['Húmus', 'Minhocas', 'Créditos de Carbono', 'Economia Aterro', 'Benefícios Indiretos', 'TOTAL'],
+            'Valor (R$/ano)': [
+                formatar_br(receitas['receita_humus']),
+                formatar_br(receitas['receita_minhocas']),
+                formatar_br(receitas['receita_carbono']),
+                formatar_br(receitas['economia_aterro']),
+                formatar_br(receitas['beneficios_indiretos']),
+                formatar_br(receitas['receita_total_anual'])
+            ],
+            'Participação (%)': [
+                f"{receitas['estrutura_receitas']['humus_perc']:.1f}",
+                f"{receitas['estrutura_receitas']['minhocas_perc']:.1f}",
+                f"{receitas['estrutura_receitas']['carbono_perc']:.1f}",
+                f"{receitas['estrutura_receitas']['economia_aterro_perc']:.1f}",
+                f"{receitas['estrutura_receitas']['beneficios_indiretos_perc']:.1f}",
+                "100,0"
+            ]
+        })
+        
+        st.dataframe(df_receitas, use_container_width=True)
+        
+        # Gráfico de pizza das receitas
+        fig, ax = plt.subplots(figsize=(8, 8))
+        labels = ['Húmus', 'Minhocas', 'Créditos Carbono', 'Economia Aterro', 'Benefícios Indiretos']
+        sizes = [
+            receitas['estrutura_receitas']['humus_perc'],
+            receitas['estrutura_receitas']['minhocas_perc'],
+            receitas['estrutura_receitas']['carbono_perc'],
+            receitas['estrutura_receitas']['economia_aterro_perc'],
+            receitas['estrutura_receitas']['beneficios_indiretos_perc']
+        ]
+        colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336']
+        
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+        
+        for autotext in autotexts:
+            autotext.set_color('white')
+            autotext.set_fontweight('bold')
+        
+        ax.set_title('Distribuição das Receitas Anuais (%) - Tabela 18')
+        st.pyplot(fig)
+        
+        # Análise de sensibilidade
+        st.subheader("🎯 Análise de Sensibilidade - Cenários Brasileiros (Baseado na Tabela 18)")
+        
+        # Tabela comparativa de cenários
+        dados_cenarios = []
+        for cenario, dados in sensibilidade_tese.items():
+            if dados['indicadores']['vpl'] is not None:
+                roi = (dados['indicadores']['vpl'] / dados['capex']) * 100 if dados['capex'] > 0 else 0
+            else:
+                roi = 0
+                
+            dados_cenarios.append({
+                'Cenário': cenario,
+                'Mercado Carbono': dados['receitas_detalhadas']['mercado_selecionado'].capitalize(),
+                'Preço Carbono (R$/tCO₂eq)': formatar_br(dados['receitas_detalhadas']['preco_credito_usado']),
+                'CAPEX (R$)': formatar_br(dados['capex']),
+                'VPL (R$)': formatar_br(dados['indicadores']['vpl']),
+                'TIR (%)': f"{dados['indicadores']['tir']*100:.1f}" if dados['indicadores']['tir'] is not None else 'N/A',
+                'Payback (anos)': dados['indicadores']['payback_anos'] or '>20',
+                'ROI (%)': f"{roi:.1f}",
+                'Viabilidade': '✅' if dados['indicadores']['vpl'] > 0 else '❌'
+            })
+        
+        df_cenarios = pd.DataFrame(dados_cenarios)
+        st.dataframe(df_cenarios, use_container_width=True)
         
         # =========================================================================
-        # RESUMO EXECUTIVO TEA - BRASIL
+        # RESUMO EXECUTIVO TEA - BRASIL (TABELA 18)
         # =========================================================================
         
-        with st.expander("📋 Resumo Executivo TEA - Brasil", expanded=True):
+        with st.expander("📋 Resumo Executivo TEA - Brasil (Tabelas 18-19)", expanded=True):
             st.markdown(f"""
-            ## 📊 Resumo Executivo - Análise Técnico-Econômica (Brasil)
+            ## 📊 Resumo Executivo - Análise Técnico-Econômica (Brasil - Tabelas 18-19)
             
-            **🇧🇷 Contexto Brasileiro (Adaptação de Zziwa et al., 2021):**
+            **🇧🇷 Contexto Brasileiro (Tabela 18 - Adaptação de Zziwa et al., 2021):**
             - **Escala:** {residuos_kg_dia} kg/dia ({formatar_br(residuos_kg_dia * 365 / 1000)} ton/ano)
             - **Reatores necessários:** {custos_tese['info_sistema']['num_reatores']} unidades
-            - **Minhocas:** {formatar_br(custos_tese['info_sistema']['kg_minhocas'])} kg
+            - **Minhocas iniciais:** {formatar_br(custos_tese['info_sistema']['kg_minhocas'])} kg
             
-            **💼 Viabilidade Financeira:**
+            **💼 Viabilidade Financeira (Tabela 18):**
             - **VPL:** R$ {formatar_br(indicadores_tese['vpl'])} 
             - **TIR:** {f"{indicadores_tese['tir']*100:.1f}%" if indicadores_tese['tir'] is not None else 'N/A'}
             - **Payback:** {indicadores_tese['payback_anos'] or '> período'} anos
             - **Custo por tCO₂eq evitada:** R$ {formatar_br(indicadores_tese['custo_tonelada_evitada'])}
             
-            **💰 Estrutura de Custos e Receitas (R$):**
+            **💰 Estrutura de Custos e Receitas (R$) - Tabela 18:**
             - **Investimento (CAPEX):** R$ {formatar_br(custos_tese['capex_total'])}
             - **Custo Anual (OPEX):** R$ {formatar_br(custos_tese['opex_anual'])}/ano
             - **Receita Total Anual:** R$ {formatar_br(receitas_tese['receita_total_anual'])}/ano
-              - Créditos de Carbono: R$ {formatar_br(receitas_tese['receita_carbono'])}/ano
-              - Venda de Húmus: R$ {formatar_br(receitas_tese['receita_humus'])}/ano
-              - Economia com Aterro: R$ {formatar_br(receitas_tese['economia_aterro'])}/ano
-              - Benefícios Indiretos: R$ {formatar_br(receitas_tese['beneficios_indiretos'])}/ano
+              - **Húmus:** R$ {formatar_br(receitas_tese['receita_humus'])}/ano ({receitas_tese['producao_humus_kg_ano']/1000:.1f} ton × R$ {receitas_tese['parametros_entrada']['preco_humus']}/kg)
+              - **Minhocas:** R$ {formatar_br(receitas_tese['receita_minhocas'])}/ano ({receitas_tese['producao_minhocas_kg_ano']:.0f} kg × R$ {receitas_tese['parametros_entrada']['preco_minhoca']}/kg)
+              - **Créditos de Carbono:** R$ {formatar_br(receitas_tese['receita_carbono'])}/ano
+              - **Economia com Aterro:** R$ {formatar_br(receitas_tese['economia_aterro'])}/ano
+              - **Benefícios Indiretos:** R$ {formatar_br(receitas_tese['beneficios_indiretos'])}/ano
             
-            **🌍 Impacto Econômico-Ambiental:**
+            **🌍 Impacto Econômico-Ambiental (Tabela 19):**
             - **Custo de Abatimento:** R$ {formatar_br(indicadores_tese['custo_tonelada_evitada'])}/tCO₂eq
             - **Preço de Mercado:** R$ {formatar_br(preco_carbono_tea)}/tCO₂eq
             - **Margem por Crédito:** R$ {formatar_br(preco_carbono_tea - indicadores_tese['custo_tonelada_evitada'])}
-            - **Produção de Húmus:** {formatar_br(receitas_tese['producao_humus_ton_ano'])} ton/ano
+            - **Produção de Húmus:** {formatar_br(receitas_tese['producao_humus_kg_ano']/1000)} ton/ano
+            - **Produção de Minhocas:** {formatar_br(receitas_tese['producao_minhocas_kg_ano'])} kg/ano
             
-            **🎯 Cenários de Mercado para Brasil:**
+            **🎯 Cenários de Mercado para Brasil (Tabela 19):**
             - **Voluntário (R$ 37,40):** VPL = R$ {formatar_br(sensibilidade_tese['Pessimista (Voluntário)']['indicadores']['vpl'])}
             - **Híbrido (R$ 290,82):** VPL = R$ {formatar_br(sensibilidade_tese['Realista (Híbrido)']['indicadores']['vpl'])}
             - **Regulado EU ETS (R$ 544,23):** VPL = R$ {formatar_br(sensibilidade_tese['Otimista (Regulado EU ETS)']['indicadores']['vpl'])}
             
-            **⚖️ Conclusão TEA para Brasil:**
+            **⚖️ Conclusão TEA para Brasil (Tabela 18):**
             {"✅ **PROJETO VIÁVEL** - VPL positivo e TIR acima do custo de capital" 
              if indicadores_tese['vpl'] > 0 else 
              "⚠️ **PROJETO NÃO VIÁVEL** - Necessita de ajustes ou incentivos"}
             """)
-
-        # =============================================================================
-        # SIMULAÇÃO DE CENÁRIOS DE MERCADO
-        # =============================================================================
-
-        simulacao_cenarios(
-            preco_base=st.session_state.preco_carbono,
-            cambio_base=st.session_state.taxa_cambio,
-            media_tese=media_tese,
-            media_unfccc=media_unfccc
-        )
-
-        # Análise Estatística de Comparação
-        st.subheader("📊 Análise Estatística de Comparação")
         
-        # Teste de normalidade para as diferenças
-        diferencas = results_array_tese - results_array_unfccc
-        _, p_valor_normalidade_diff = stats.normaltest(diferencas)
-        st.write(f"Teste de normalidade das diferenças (p-value): **{p_valor_normalidade_diff:.5f}**")
-
-        # Teste T pareado
-        ttest_pareado, p_ttest_pareado = stats.ttest_rel(results_array_tese, results_array_unfccc)
-        st.write(f"Teste T pareado: Estatística t = **{ttest_pareado:.5f}**, P-valor = **{p_ttest_pareado:.5f}**")
-
-        # Teste de Wilcoxon para amostras pareadas
-        wilcoxon_stat, p_wilcoxon = stats.wilcoxon(results_array_tese, results_array_unfccc)
-        st.write(f"Teste de Wilcoxon (pareado): Estatística = **{wilcoxon_stat:.5f}**, P-valor = **{p_wilcoxon:.5f}**")
-
-        # Tabela de resultados anuais - Proposta da Tese
-        st.subheader("📋 Resultados Anuais - Proposta da Tese")
-
-        # Criar uma cópia para formatação
-        df_anual_formatado = df_anual_revisado.copy()
-        for col in df_anual_formatado.columns:
-            if col != 'Year':
-                df_anual_formatado[col] = df_anual_formatado[col].apply(formatar_br)
-
-        st.dataframe(df_anual_formatado)
-
-        # Tabela de resultados anuais - Metodologia UNFCCC
-        st.subheader("📋 Resultados Anuais - Metodologia UNFCCC")
-
-        # Criar uma cópia para formatação
-        df_comp_formatado = df_comp_anual_revisado.copy()
-        for col in df_comp_formatado.columns:
-            if col != 'Year':
-                df_comp_formatado[col] = df_comp_formatado[col].apply(formatar_br)
-
-        st.dataframe(df_comp_formatado)
-
         # =============================================================================
-        # ANÁLISE DE ROBUSTEZ COM MÚLTIPLOS SEEDS (NOVA SEÇÃO)
+        # RODAPÉ ATUALIZADO COM REFERÊNCIAS DAS TABELAS 18-19
         # =============================================================================
 
+        # Rodapé
         st.markdown("---")
-        st.header("🔄 Análise de Robustez com Diferentes Seeds Aleatórios")
-        
-        with st.expander("🔍 Clique para executar análise de robustez (opcional)"):
-            st.markdown("""
-            **Esta análise executa a simulação com diferentes seeds aleatórios para avaliar a variabilidade real dos resultados.**
-            
-            *Por padrão usamos seed=50 para garantir reprodutibilidade, mas diferentes seeds geram diferentes sequências aleatórios.*
-            """)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                n_seeds = st.slider("Número de seeds diferentes", 3, 20, 5, key="n_seeds")
-            with col2:
-                n_sim_per_seed = st.slider("Simulações por seed", 50, 500, 100, key="n_sim_per_seed")
-            
-            if st.button("🔄 Executar Análise de Robustez", type="secondary", key="run_robustez"):
-                resultados, seeds = analise_robustez_multi_seeds(
-                    n_seeds=n_seeds, 
-                    n_simulations=n_sim_per_seed
-                )
-                criar_visualizacao_robustez(resultados, seeds)
+        st.markdown("""
+
+        **📚 Referências por Cenário - Brasil (Tabelas 18-19):**
+
+        **Cenário de Baseline (Aterro Sanitário) - Brasil:**
+        - Metano: IPCC (2006), UNFCCC (2016) e Wang et al. (2023) adaptado
+        - Óxido Nitroso: Wang et al. (2017) adaptado
+        - Metano e Óxido Nitroso no pré-descarte: Feng et al. (2020) adaptado
+        - Custos de disposição: ABRELPE (2024) - R$ 300/ton
+
+        **Proposta da Tese (Compostagem em reatores com minhocas) - Brasil (Tabela 18):**
+        - Metano e Óxido Nitroso: Yang et al. (2017) adaptado
+        - Custos de investimento: Tabela 18 - Zziwa et al. (2021) adaptado para Brasil
+        - Reatores: {residuos_kg_dia} unidades × R$ 1.000 = R$ {formatar_br(residuos_kg_dia*1000)}
+        - Minhocas: {residuos_kg_dia*3} kg × R$ 100 = R$ {formatar_br(residuos_kg_dia*300)}
+        - Receitas: Húmus R$ 10,00/kg, Minhocas R$ 100,00/kg
+
+        **Cenário UNFCCC (Compostagem sem minhocas a céu aberto) - Brasil:**
+        - Protocolo AMS-III.F: UNFCCC (2016)
+        - Fatores de emissões: Yang et al. (2017)
+
+        **🌍 Mercados de Carbono - Contexto Brasileiro (Tabela 19):**
+        - **Mercado Voluntário:** State of Voluntary Carbon Markets 2024 (USD 7.45/tCO₂eq ≈ R$ 37,40)
+        - **Mercado Regulado:** EU ETS Futures Dec/2025 (€72.29/tCO₂eq ≈ R$ 461,20)
+        - **Câmbio T19 (maio/2025):** EUR/BRL: 6,38; USD/BRL: 5,65
+        - **Adaptação econômica:** Valores convertidos para Real Brasileiro (R$)
+
+        **🇧🇷 Contextualização para o Brasil (Tabela 18):**
+        - Escala: {residuos_kg_dia} kg/dia = {residuos_kg_dia*365/1000:.1f} ton/ano
+        - Reatores necessários: {residuos_kg_dia} unidades (1 reator/kg/dia)
+        - Minhocas iniciais: {residuos_kg_dia*3} kg (3 kg/kg/dia)
+        - Produção anual de húmus: {residuos_kg_dia*365/1000*0.4:.1f} ton (40% dos resíduos)
+        - Produção anual de minhocas: {7.45*residuos_kg_dia:.1f} kg (7,45 kg/kg/dia)
+        - Receita total sem carbono (Tabela 18): R$ {formatar_br(residuos_kg_dia*365/1000*0.4*1000*10 + 7.45*residuos_kg_dia*100 + residuos_kg_dia*365/1000*300)}
+        """)
 
 else:
-    st.info("💡 Ajuste os parâmetros na barra lateral e clique em 'Executar Simulação Completa' para ver os resultados.")
-
-# Rodapé
-st.markdown("---")
-st.markdown("""
-
-**📚 Referências por Cenário - Adaptação para Brasil:**
-
-**Cenário de Baseline (Aterro Sanitário) - Brasil:**
-- Metano: IPCC (2006), UNFCCC (2016) e Wang et al. (2023) adaptado
-- Óxido Nitroso: Wang et al. (2017) adaptado
-- Metano e Óxido Nitroso no pré-descarte: Feng et al. (2020) adaptado
-- Custos de disposição: ABRELPE (2024) - R$ 300/ton
-
-**Proposta da Tese (Compostagem em reatores com minhocas) - Brasil:**
-- Metano e Óxido Nitroso: Yang et al. (2017) adaptado
-- Custos de investimento: Adaptação de Zziwa et al. (2021) para realidade brasileira
-- Reatores: R$ 1.000/unidade (10 kg/dia)
-- Minhocas: R$ 100/kg (Eisenia fetida)
-
-**Cenário UNFCCC (Compostagem sem minhocas a céu aberto) - Brasil:**
-- Protocolo AMS-III.F: UNFCCC (2016)
-- Fatores de emissões: Yang et al. (2017)
-
-**🌍 Mercados de Carbono - Contexto Brasileiro:**
-- **Mercado Voluntário:** State of Voluntary Carbon Markets 2024 (USD 7.48/tCO₂eq ≈ R$ 37,40)
-- **Mercado Regulado:** EU ETS Futures Dec/2025 (€85.57/tCO₂eq ≈ R$ 544,23)
-- **Câmbio:** Taxas de referência BCB e mercado (EUR/BRL: 6,36; USD/BRL: 5,00)
-- **Adaptação econômica:** Valores convertidos para Real Brasileiro (R$)
-
-**🇧🇷 Contextualização para o Brasil:**
-- Salário mínimo regional: R$ 20/hora
-- Tarifa de energia comercial: R$ 0,80/kWh
-- Preço do húmus orgânico: R$ 2,5/kg
-- Custo de disposição em aterro: R$ 300/tonelada
-- Taxa de desconto: 8% a.a. (SELIC + risco)
-""")
-
+    st.info("💡 Ajuste os parâmetros na barra lateral e clique em 'Executar Simulação Completa' para ver os resultados baseados na Tabela 18 da tese.")
