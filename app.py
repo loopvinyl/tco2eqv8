@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from matplotlib.ticker import FuncFormatter
 from scipy.optimize import newton
 import warnings
 warnings.filterwarnings('ignore')
@@ -293,7 +292,7 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade, resultados_simula
         ax1.set_ylabel('Fluxo de Caixa Acumulado (R$)')
         ax1.set_title('Evolução do Fluxo de Caixa Acumulado')
         ax1.grid(True, alpha=0.3)
-        ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+        ax1.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
         st.pyplot(fig1)
         
         # Tabela de parâmetros
@@ -333,7 +332,7 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade, resultados_simula
         ax2.set_ylabel('Fluxo de Caixa (R$)')
         ax2.set_title('Fluxo de Caixa Anual')
         ax2.grid(True, alpha=0.3, axis='y')
-        ax2.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+        ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
         
         # Adicionar valores nas barras
         for bar in bars:
@@ -420,7 +419,7 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade, resultados_simula
                 ax.set_ylabel('VPL (R$)')
                 ax.set_title(f'Sensibilidade do VPL - {var_nome.replace("_", " ").title()}')
                 ax.grid(True, alpha=0.3)
-                ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+                ax.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
                 
                 # Destacar ponto base
                 if 'preco_carbono' in var_nome:
@@ -619,7 +618,7 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade, resultados_simula
         ax1.set_ylabel('Eficiência de Redução (%)')
         ax1.set_title('Trade-off: Custo vs Eficiência de Redução')
         ax1.grid(True, alpha=0.3)
-        ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+        ax1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
         ax1.legend()
         
         # Gráfico 2: Análise Custo-Benefício
@@ -758,7 +757,7 @@ def criar_dashboard_tea(analise_tea, resultados_sensibilidade, resultados_simula
         ax_sens.set_title('Análise de Sensibilidade do Trade-off')
         ax_sens.legend()
         ax_sens.grid(True, alpha=0.3)
-        ax_sens.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+        ax_sens.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
         
         st.pyplot(fig_sens)
         
@@ -1028,12 +1027,15 @@ def executar_simulacao_tea_completa():
             metricas.to_excel(writer, sheet_name='Métricas', index=False)
         
         st.sidebar.success("✅ Análise exportada com sucesso!")
-        st.sidebar.download_button(
-            label="⬇️ Baixar Arquivo Excel",
-            data=open('analise_tea_vermicompostagem.xlsx', 'rb').read(),
-            file_name='analise_tea_vermicompostagem.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+        
+        # Criar botão de download
+        with open('analise_tea_vermicompostagem.xlsx', 'rb') as f:
+            st.sidebar.download_button(
+                label="⬇️ Baixar Arquivo Excel",
+                data=f,
+                file_name='analise_tea_vermicompostagem.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
 
 # ============================================================================
 # EXECUTAR APLICAÇÃO
@@ -1047,8 +1049,14 @@ if __name__ == "__main__":
     
     st.title("🌱 Análise Técnico-Econômica de Vermicompostagem")
     st.markdown("""
-    Esta ferramenta realiza uma análise completo de viabilidade técnica, econômica e ambiental 
+    Esta ferramenta realiza uma análise completa de viabilidade técnica, econômica e ambiental 
     para projetos de vermicompostagem de resíduos orgânicos.
+    
+    ### 🚀 **Principais Funcionalidades:**
+    - **Análise Financeira**: VPL, TIR, Payback, Custo por tCO₂eq evitada
+    - **Impacto Ambiental**: Redução de emissões e eficiência do sistema
+    - **Trade-off Econômico-Ambiental**: Comparação com outras tecnologias
+    - **Análise de Sensibilidade**: Simulação de diferentes cenários
     """)
     
     executar_simulacao_tea_completa()
