@@ -3192,4 +3192,4 @@ st.markdown("""
 - Custo de disposição em aterro: R$ 300/tonelada
 - Taxa de desconto: 8% a.a. (SELIC + risco)
 """)
-[file content end]
+
