@@ -1,5 +1,4 @@
-[file name]: tco2eqv8_completo.txt
-[file content begin]
+
 import requests
 from bs4 import BeautifulSoup
 import streamlit as st
