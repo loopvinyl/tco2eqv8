@@ -1,3 +1,5 @@
+[file name]: tco2eqv8_completo.txt
+[file content begin]
 import requests
 from bs4 import BeautifulSoup
 import streamlit as st
@@ -1037,7 +1039,399 @@ def analise_sensibilidade_tea_brasil(residuos_kg_dia, reducao_anual_tco2eq,
     
     return resultados
 
-def criar_dashboard_tea_brasil(analise_tea, resultados_sensibilidade):
+# =============================================================================
+# ANÁLISE TEA BASEADA EM ZZIWA ET AL. (2021) - TABELAS 18 E 19
+# =============================================================================
+
+def calcular_tea_ziwa_2021(residuos_kg_dia, reducao_anual_tco2eq, taxa_cambio_usd=5.65, taxa_cambio_eur=6.38):
+    """
+    Calcula a Análise Técnico-Econômica exatamente conforme Zziwa et al. (2021)
+    seguindo a estrutura das Tabelas 18 e 19 fornecidas
+    """
+    # Parâmetros fixos conforme tabela
+    dias_vermicompostagem = 50
+    residuos_ton_ano = residuos_kg_dia * 365 / 1000  # 36,5 ton/ano para 100 kg/dia
+    
+    # 1. CUSTOS DE INVESTIMENTO (Tabela 18)
+    num_reatores = 100  # Fixo conforme tabela
+    custo_reator = 1000  # R$/reator
+    custo_total_reatores = num_reatores * custo_reator  # R$ 100.000
+    
+    biomassa_minhocas_kg = 300  # kg
+    custo_minhoca_kg = 100  # R$/kg
+    custo_total_minhocas = biomassa_minhocas_kg * custo_minhoca_kg  # R$ 30.000
+    
+    custo_investimento_total = custo_total_reatores + custo_total_minhocas  # R$ 130.000
+    
+    # 2. ECONOMIA COM ATERRO
+    custo_aterro_ton = 300  # R$/ton
+    economia_aterro_anual = residuos_ton_ano * custo_aterro_ton  # R$ 10.950
+    
+    # 3. PRODUÇÃO E RECEITAS (Tabela 18)
+    # Produção de vermicomposto: 40% dos resíduos
+    producao_vermicomposto_ton_ano = residuos_ton_ano * 0.4  # 14,6 ton/ano
+    producao_vermicomposto_kg_ano = producao_vermicomposto_ton_ano * 1000  # 14.600 kg/ano
+    preco_vermicomposto_kg = 10.00  # R$/kg
+    receita_vermicomposto = producao_vermicomposto_kg_ano * preco_vermicomposto_kg  # R$ 146.000
+    
+    # Produção de biomassa de minhocas: 745 kg/ano (fixo conforme tabela)
+    producao_biomassa_kg_ano = 745  # kg/ano
+    preco_biomassa_kg = 100.00  # R$/kg
+    receita_biomassa = producao_biomassa_kg_ano * preco_biomassa_kg  # R$ 74.496,50
+    
+    # Receita total sem créditos de carbono
+    receita_total_sem_carbono = receita_vermicomposto + receita_biomassa  # R$ 231.446,50
+    
+    # 4. CRÉDITOS DE CARBONO (Tabela 19)
+    # Usar a redução anual média do projeto (ano 1 = 70,29 tCO2eq)
+    reducao_anual = reducao_anual_tco2eq  # tCO2eq/ano
+    
+    # Mercado Voluntário
+    preco_voluntario_usd = 7.45  # USD/tCO2eq
+    receita_voluntario_usd = reducao_anual * preco_voluntario_usd  # USD 523,69
+    receita_voluntario_brl = receita_voluntario_usd * taxa_cambio_usd  # R$ 2.958,87
+    
+    # Mercado Regulado
+    preco_regulado_eur = 72.29  # EUR/tCO2eq
+    receita_regulado_eur = reducao_anual * preco_regulado_eur  # EUR 5.081,59
+    receita_regulado_brl = receita_regulado_eur * taxa_cambio_eur  # R$ 32.420,55
+    
+    # Receitas totais com créditos
+    receita_total_voluntario = receita_total_sem_carbono + receita_voluntario_brl  # R$ 234.405,37
+    receita_total_regulado = receita_total_sem_carbono + receita_regulado_brl  # R$ 263.867,05
+    
+    # 5. INDICADORES DE VIABILIDADE (simplificado)
+    # Considerando apenas o primeiro ano para simplificação
+    fluxo_caixa_anual_voluntario = receita_total_voluntario - 0  # OPEX não especificado na tabela
+    fluxo_caixa_anual_regulado = receita_total_regulado - 0
+    
+    # Payback simples (considerando receita como fluxo positivo)
+    payback_voluntario = custo_investimento_total / fluxo_caixa_anual_voluntario if fluxo_caixa_anual_voluntario > 0 else None
+    payback_regulado = custo_investimento_total / fluxo_caixa_anual_regulado if fluxo_caixa_anual_regulado > 0 else None
+    
+    return {
+        # Parâmetros básicos
+        'residuos_kg_dia': residuos_kg_dia,
+        'residuos_ton_ano': residuos_ton_ano,
+        'dias_vermicompostagem': dias_vermicompostagem,
+        'reducao_anual_tco2eq': reducao_anual,
+        
+        # Investimento (Tabela 18)
+        'num_reatores': num_reatores,
+        'custo_reator': custo_reator,
+        'custo_total_reatores': custo_total_reatores,
+        'biomassa_minhocas_kg': biomassa_minhocas_kg,
+        'custo_minhoca_kg': custo_minhoca_kg,
+        'custo_total_minhocas': custo_total_minhocas,
+        'custo_investimento_total': custo_investimento_total,
+        
+        # Economia aterro
+        'custo_aterro_ton': custo_aterro_ton,
+        'economia_aterro_anual': economia_aterro_anual,
+        
+        # Produção e receitas (Tabela 18)
+        'producao_vermicomposto_kg_ano': producao_vermicomposto_kg_ano,
+        'preco_vermicomposto_kg': preco_vermicomposto_kg,
+        'receita_vermicomposto': receita_vermicomposto,
+        'producao_biomassa_kg_ano': producao_biomassa_kg_ano,
+        'preco_biomassa_kg': preco_biomassa_kg,
+        'receita_biomassa': receita_biomassa,
+        'receita_total_sem_carbono': receita_total_sem_carbono,
+        
+        # Créditos de carbono (Tabela 19)
+        'preco_voluntario_usd': preco_voluntario_usd,
+        'receita_voluntario_usd': receita_voluntario_usd,
+        'taxa_cambio_usd': taxa_cambio_usd,
+        'receita_voluntario_brl': receita_voluntario_brl,
+        'preco_regulado_eur': preco_regulado_eur,
+        'receita_regulado_eur': receita_regulado_eur,
+        'taxa_cambio_eur': taxa_cambio_eur,
+        'receita_regulado_brl': receita_regulado_brl,
+        
+        # Receitas totais
+        'receita_total_voluntario': receita_total_voluntario,
+        'receita_total_regulado': receita_total_regulado,
+        
+        # Indicadores
+        'payback_voluntario': payback_voluntario,
+        'payback_regulado': payback_regulado,
+        
+        # Metadados
+        'fonte': 'Zziwa et al. (2021) adaptado',
+        'moeda': 'R$ (Real Brasileiro)',
+        'periodo': 'Ano 1'
+    }
+
+def exibir_tea_ziwa_2021(tea_data):
+    """
+    Exibe a Análise TEA no formato das Tabelas 18 e 19
+    """
+    st.subheader("📋 Análise Técnico-Econômica Baseada em Zziwa et al. (2021)")
+    
+    # Tabela 18 - Sem créditos de carbono
+    st.markdown("#### Tabela 18 – Techno-Economic Analysis, sem Receita de Créditos de Carbono")
+    
+    tabela18_data = {
+        'Descrição dos parâmetros': [
+            '100 kg por dia de resíduo frescos durante 1 ano',
+            '50 dias de vermicompostagem',
+            'Quantidade de reatores necessários',
+            'Custo de construção dos 100 reatores',
+            'Biomassa inicial de minhocas (em kg)',
+            'Custo de aquisição da biomassa de minhocas',
+            'Custo total de investimento',
+            'Economias com a vermicompostagem',
+            'Total de vermicomposto produzido por ano (kg)',
+            'Total de biomassa de minhocas produzida por ano (kg)',
+            'Valor anual de vermicomposto gerado',
+            'Valor anual da biomassa de minhocas produzida',
+            'Receitas anuais totais'
+        ],
+        'Projeção': [
+            f"{tea_data['residuos_kg_dia']} kg/dia × 365 dias",
+            f"{tea_data['dias_vermicompostagem']} dias",
+            f"{tea_data['num_reatores']}",
+            f"R$ {formatar_br(tea_data['custo_total_reatores'])}",
+            f"{tea_data['biomassa_minhocas_kg']}",
+            f"R$ {formatar_br(tea_data['custo_total_minhocas'])}",
+            f"R$ {formatar_br(tea_data['custo_investimento_total'])}",
+            f"R$ {formatar_br(tea_data['economia_aterro_anual'])}",
+            f"{formatar_br(tea_data['producao_vermicomposto_kg_ano'])}",
+            f"{formatar_br(tea_data['producao_biomassa_kg_ano'])}",
+            f"R$ {formatar_br(tea_data['receita_vermicomposto'])}",
+            f"R$ {formatar_br(tea_data['receita_biomassa'])}",
+            f"R$ {formatar_br(tea_data['receita_total_sem_carbono'])}"
+        ],
+        'Explicação': [
+            f"{tea_data['residuos_ton_ano']} ton/ano",
+            'período de vermicompostagem',
+            'reatores',
+            'R$ 1.000 reator⁻¹',
+            'inserido nos reatores',
+            'R$ 100 kg⁻¹',
+            'Reatores e minhocas',
+            f'R$ {tea_data["custo_aterro_ton"]} tonelada⁻¹',
+            '40% dos resíduos frescos',
+            'produção anual estimada',
+            f'R$ {tea_data["preco_vermicomposto_kg"]} kg⁻¹',
+            f'R$ {tea_data["preco_biomassa_kg"]} kg⁻¹',
+            'Soma das receitas'
+        ]
+    }
+    
+    df_tabela18 = pd.DataFrame(tabela18_data)
+    st.dataframe(df_tabela18, use_container_width=True, hide_index=True)
+    
+    # Espaçamento
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Tabela 19 - Com créditos de carbono
+    st.markdown("#### Tabela 19 – Techno-Economic Analysis, com Receita de Créditos de Carbono")
+    
+    # Parte superior (repetição da Tabela 18 resumida)
+    st.markdown("**Parte superior (mesma da Tabela 18):**")
+    
+    tabela19_superior = {
+        'Descrição': [
+            '100 kg por dia de resíduo frescos durante 1 ano',
+            '50 dias de vermicompostagem',
+            'Quantidade de reatores necessários',
+            'Custo de construção dos 100 reatores',
+            'Biomassa inicial de minhocas (em kg)',
+            'Custo de aquisição da biomassa de minhocas',
+            'Custo total de investimento',
+            'Economias com a vermicompostagem',
+            'Total de vermicomposto produzido por ano (kg)',
+            'Total de biomassa de minhocas produzida por ano (kg)',
+            'Valor anual de vermicomposto gerado',
+            'Valor anual da biomassa de minhocas produzida',
+            'Receitas anuais totais'
+        ],
+        'Valor': [
+            f"{tea_data['residuos_kg_dia']} kg/dia",
+            f"{tea_data['dias_vermicompostagem']} dias",
+            f"{tea_data['num_reatores']}",
+            f"R$ {formatar_br(tea_data['custo_total_reatores'])}",
+            f"{tea_data['biomassa_minhocas_kg']}",
+            f"R$ {formatar_br(tea_data['custo_total_minhocas'])}",
+            f"R$ {formatar_br(tea_data['custo_investimento_total'])}",
+            f"R$ {formatar_br(tea_data['economia_aterro_anual'])}",
+            f"{formatar_br(tea_data['producao_vermicomposto_kg_ano'])}",
+            f"{formatar_br(tea_data['producao_biomassa_kg_ano'])}",
+            f"R$ {formatar_br(tea_data['receita_vermicomposto'])}",
+            f"R$ {formatar_br(tea_data['receita_biomassa'])}",
+            f"R$ {formatar_br(tea_data['receita_total_sem_carbono'])}"
+        ]
+    }
+    
+    df_tabela19_superior = pd.DataFrame(tabela19_superior)
+    st.dataframe(df_tabela19_superior, use_container_width=True, hide_index=True)
+    
+    # Espaçamento
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Parte dos créditos de carbono - Mercado Voluntário
+    st.markdown("**Créditos de Carbono - Mercado Voluntário:**")
+    
+    tabela19_voluntario = {
+        'Descrição': [
+            'Emissões Evitadas no Ano 1',
+            'Preço por tCO₂eq no Mercado Voluntário de Carbono',
+            'Receita Potencial com Créditos de Carbono em dólares',
+            'Cotação do dólar em maio de 2025',
+            'Receita com Créditos de Carbono em reais',
+            'Receitas totais anuais com Crédito de Carbono no Mercado Voluntário'
+        ],
+        'Valor': [
+            f"{formatar_br(tea_data['reducao_anual_tco2eq'])} tCO₂eq",
+            f"USD {tea_data['preco_voluntario_usd']}",
+            f"USD {formatar_br(tea_data['receita_voluntario_usd'])}",
+            f"R$ {tea_data['taxa_cambio_usd']}",
+            f"R$ {formatar_br(tea_data['receita_voluntario_brl'])}",
+            f"R$ {formatar_br(tea_data['receita_total_voluntario'])}"
+        ],
+        'Explicação': [
+            'tCO₂eq no ano 1',
+            'por tCO₂eq',
+            'no ano 1',
+            'por dólar',
+            'no ano 1',
+            'no ano 1'
+        ]
+    }
+    
+    df_tabela19_voluntario = pd.DataFrame(tabela19_voluntario)
+    st.dataframe(df_tabela19_voluntario, use_container_width=True, hide_index=True)
+    
+    # Espaçamento
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Parte dos créditos de carbono - Mercado Regulado
+    st.markdown("**Créditos de Carbono - Mercado Regulado:**")
+    
+    tabela19_regulado = {
+        'Descrição': [
+            'Emissões Evitadas no Ano 1',
+            'Preço por tCO₂eq no Mercado Regulado de Carbono',
+            'Receita com Créditos de Carbono em euros',
+            'Cotação do euro em maio de 2025',
+            'Receita com Créditos de Carbono em reais',
+            'Receitas totais anuais com Crédito de Carbono no Mercado Regulado'
+        ],
+        'Valor': [
+            f"{formatar_br(tea_data['reducao_anual_tco2eq'])} tCO₂eq",
+            f"EUR {tea_data['preco_regulado_eur']}",
+            f"EUR {formatar_br(tea_data['receita_regulado_eur'])}",
+            f"R$ {tea_data['taxa_cambio_eur']}",
+            f"R$ {formatar_br(tea_data['receita_regulado_brl'])}",
+            f"R$ {formatar_br(tea_data['receita_total_regulado'])}"
+        ],
+        'Explicação': [
+            'tCO₂eq no ano 1',
+            'por tCO₂eq',
+            'no ano 1',
+            'por euro',
+            'no ano 1',
+            'no ano 1'
+        ]
+    }
+    
+    df_tabela19_regulado = pd.DataFrame(tabela19_regulado)
+    st.dataframe(df_tabela19_regulado, use_container_width=True, hide_index=True)
+    
+    # Análise de viabilidade
+    st.markdown("#### 📊 Indicadores de Viabilidade")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "Investimento Total",
+            f"R$ {formatar_br(tea_data['custo_investimento_total'])}",
+            help="Costo inicial para implantação do sistema"
+        )
+    
+    with col2:
+        if tea_data['payback_voluntario']:
+            st.metric(
+                "Payback (Voluntário)",
+                f"{tea_data['payback_voluntario']:.1f} anos",
+                help="Tempo para recuperar investimento no mercado voluntário"
+            )
+    
+    with col3:
+        if tea_data['payback_regulado']:
+            st.metric(
+                "Payback (Regulado)",
+                f"{tea_data['payback_regulado']:.1f} anos",
+                help="Tempo para recuperar investimento no mercado regulado"
+            )
+    
+    # Comparação gráfica
+    st.markdown("#### 📈 Comparação de Receitas por Mercado")
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    mercados = ['Sem Carbono', 'Voluntário', 'Regulado']
+    receitas = [
+        tea_data['receita_total_sem_carbono'],
+        tea_data['receita_total_voluntario'],
+        tea_data['receita_total_regulado']
+    ]
+    
+    bars = ax.bar(mercados, receitas, color=['gray', 'orange', 'green'])
+    
+    # Adicionar valores nas barras
+    for bar, receita in zip(bars, receitas):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height + max(receitas)*0.01,
+               f'R$ {formatar_br(receita)}', ha='center', fontsize=10, fontweight='bold')
+    
+    ax.set_ylabel('Receita Anual (R$)')
+    ax.set_title('Impacto dos Créditos de Carbono na Receita Anual')
+    ax.yaxis.set_major_formatter(FuncFormatter(br_format))
+    ax.grid(axis='y', alpha=0.3)
+    
+    st.pyplot(fig)
+    
+    # Explicação
+    with st.expander("ℹ️ Metodologia e Pressupostos"):
+        st.markdown(f"""
+        **Baseado em Zziwa et al. (2021) adaptado para realidade brasileira:**
+        
+        **📊 Pressupostos da Análise:**
+        - **Escala:** {tea_data['residuos_kg_dia']} kg/dia = {tea_data['residuos_ton_ano']} ton/ano
+        - **Período de vermicompostagem:** {tea_data['dias_vermicompostagem']} dias
+        - **Reatores necessários:** {tea_data['num_reatores']} unidades
+        - **Investimento inicial:** R$ {formatar_br(tea_data['custo_investimento_total'])}
+        
+        **💰 Parâmetros Econômicos:**
+        - **Custo reator:** R$ {tea_data['custo_reator']}/unidade
+        - **Custo minhoca:** R$ {tea_data['custo_minhoca_kg']}/kg
+        - **Custo aterro:** R$ {tea_data['custo_aterro_ton']}/ton
+        - **Preço vermicomposto:** R$ {tea_data['preco_vermicomposto_kg']}/kg
+        - **Preço biomassa:** R$ {tea_data['preco_biomassa_kg']}/kg
+        
+        **🌍 Mercados de Carbono:**
+        - **Voluntário:** USD {tea_data['preco_voluntario_usd']}/tCO₂eq (R$ {formatar_br(tea_data['preco_voluntario_usd'] * tea_data['taxa_cambio_usd'])})
+        - **Regulado:** EUR {tea_data['preco_regulado_eur']}/tCO₂eq (R$ {formatar_br(tea_data['preco_regulado_eur'] * tea_data['taxa_cambio_eur'])})
+        
+        **📈 Produção Estimada:**
+        - **Vermicomposto:** {formatar_br(tea_data['producao_vermicomposto_kg_ano'])} kg/ano (40% dos resíduos)
+        - **Biomassa minhocas:** {formatar_br(tea_data['producao_biomassa_kg_ano'])} kg/ano
+        
+        **🎯 Redução de Emissões:**
+        - **Ano 1:** {formatar_br(tea_data['reducao_anual_tco2eq'])} tCO₂eq
+        - **Fonte:** Simulação adaptada de Yang et al. (2017)
+        
+        **⚠️ Observações:**
+        1. Não inclui custos operacionais (OPEX) detalhados
+        2. Payback calculado considerando receita como fluxo positivo
+        3. Valores em Reais de maio/2025
+        4. Adaptação para contexto brasileiro
+        """)
+
+def criar_dashboard_tea_brasil(analise_tea, resultados_sensibilidade, reducao_anual_tco2eq):
     """
     Cria dashboard interativo para Análise Técnico-Econômica - CONTEXTO BRASILEIRO
     """
@@ -1074,12 +1468,13 @@ def criar_dashboard_tea_brasil(analise_tea, resultados_sensibilidade):
         """)
     
     # Abas para diferentes análises
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🇧🇷 Contexto Brasileiro",
         "💰 Fluxo de Caixa",
         "📈 Indicadores Financeiros",
         "🎯 Análise de Sensibilidade",
-        "⚖️ Sustentabilidade Econômica"
+        "⚖️ Sustentabilidade Econômica",
+        "📚 Zziwa et al. (2021)"
     ])
     
     with tab1:
@@ -1397,6 +1792,30 @@ def criar_dashboard_tea_brasil(analise_tea, resultados_sensibilidade):
             if analise_tea['indicadores']['vpl'] > 0 else 
             "**PROJETO NÃO VIÁVEL** - Necessita de incentivos ou ajustes de escala"}
             """)
+    
+    # NOVA ABA 6: Análise baseada em Zziwa et al. (2021)
+    with tab6:
+        st.markdown("#### 📊 Análise TEA Baseada em Zziwa et al. (2021)")
+        
+        # Nota: a escala fixa é 100 kg/dia conforme tabela
+        if analise_tea['info_sistema']['capacidade_tratamento_ton_ano'] == 36.5:
+            # Já está na escala correta
+            residuos_kg_dia = 100
+        else:
+            # Aviso que a escala foi ajustada para 100 kg/dia para compatibilidade
+            st.warning(f"A escala do projeto atual é {analise_tea['info_sistema']['capacidade_tratamento_ton_ano']} ton/ano. A análise de Zziwa et al. (2021) é para 36,5 ton/ano (100 kg/dia). Ajustando para escala compatível.")
+            residuos_kg_dia = 100
+        
+        # Calcular TEA conforme tabelas
+        tea_ziwa = calcular_tea_ziwa_2021(
+            residuos_kg_dia=residuos_kg_dia,
+            reducao_anual_tco2eq=reducao_anual_tco2eq,
+            taxa_cambio_usd=5.65,
+            taxa_cambio_eur=6.38
+        )
+        
+        # Exibir tabelas
+        exibir_tea_ziwa_2021(tea_ziwa)
 
 # =============================================================================
 # NOVAS FUNÇÕES PARA ANÁLISE FINANCEIRA DE RISCO
@@ -1590,7 +2009,7 @@ def criar_dashboard_financeiro(analise_tese, analise_unfccc, preco_carbono, taxa
             'Métrica': [
                 'Valor Esperado (R$)', 
                 'Downside (R$)', 
-                'Upside (R$)',
+                'Upside (R$)', 
                 'VaR 95% (R$)',
                 'CVaR 95% (R$)',
                 'Razão Retorno/Risco'
@@ -2613,7 +3032,7 @@ if st.session_state.get('run_simulation', False):
         }
         
         # Exibir dashboard TEA BRASILEIRO
-        criar_dashboard_tea_brasil(analise_tea_completa, sensibilidade_tese)
+        criar_dashboard_tea_brasil(analise_tea_completa, sensibilidade_tese, reducao_anual_tese)
         
         # =========================================================================
         # RESUMO EXECUTIVO TEA - BRASIL
@@ -2774,3 +3193,4 @@ st.markdown("""
 - Custo de disposição em aterro: R$ 300/tonelada
 - Taxa de desconto: 8% a.a. (SELIC + risco)
 """)
+[file content end]
