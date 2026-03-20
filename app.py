@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Nutriwash Circular System BR - Aplicativo Streamlit
 Calculadora de Emissões de GEE para Tecnologias de Gestão de Resíduos
@@ -9,69 +10,30 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.signal import fftconvolve
-from scipy import stats
 from SALib.sample.sobol import sample
 from SALib.analyze.sobol import analyze
 from joblib import Parallel, delayed
 import warnings
 from datetime import datetime
 from matplotlib.ticker import FuncFormatter
-import io
-import base64
-from matplotlib.backends.backend_pdf import PdfPages
 
+# =============================================================================
+# CONFIGURAÇÃO INICIAL
+# =============================================================================
 warnings.filterwarnings('ignore')
+np.random.seed(50)  # reprodutibilidade
+plt.rcParams['figure.dpi'] = 150
+sns.set_style("whitegrid")
 
-# =============================================================================
-# CONFIGURAÇÃO DA PÁGINA
-# =============================================================================
-st.set_page_config(
-    page_title="Nutriwash - Calculadora GEE",
-    page_icon="♻️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Estilo customizado para formatação brasileira
-st.markdown("""
-<style>
-    /* Estilo geral */
-    .main-header {
-        font-size: 2.5rem;
-        color: #2E7D32;
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #555;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background-color: #f0f2f6;
-        border-radius: 10px;
-        padding: 1rem;
-        text-align: center;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# =============================================================================
-# FUNÇÕES AUXILIARES DE FORMATAÇÃO (padrão brasileiro)
-# =============================================================================
+# Formatadores brasileiros (ponto de milhar e vírgula decimal)
 def br_format_inteiro(x, pos):
     return f'{x:,.0f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 def br_format_decimal(x, pos):
     return f'{x:.4f}'.replace('.', ',')
 
-br_formatter_inteiro = FuncFormatter(br_format_inteiro)
-br_formatter_decimal = FuncFormatter(br_format_decimal)
-
 # =============================================================================
-# CLASSE PRINCIPAL DE CÁLCULO (mesma do script original)
+# CLASSE PRINCIPAL DE CÁLCULO DE EMISSÕES (MESMA DO SCRIPT ORIGINAL)
 # =============================================================================
 class GHGEmissionCalculator:
     """Calculadora principal de emissões de GEE para gestão de resíduos"""
@@ -117,7 +79,6 @@ class GHGEmissionCalculator:
     
     def _load_emission_profiles(self):
         """Carrega e normaliza os perfis de emissão do Apêndice A"""
-        
         # Perfil de CH4 para vermicompostagem (Apêndice A.4.1)
         self.profile_ch4_vermi = np.array([
             0.02, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.06,
@@ -187,9 +148,7 @@ class GHGEmissionCalculator:
     
     def calculate_landfill_emissions(self, waste_kg_day, k_year, temperature_C, 
                                     doc_fraction, moisture_fraction, years=20):
-        """
-        Calcula as emissões do aterro usando o método FOD do IPCC.
-        """
+        """Calcula as emissões do aterro usando o método FOD do IPCC."""
         days = years * 365
         
         # Cálculo do DOCf (fração que realmente se decompõe)
@@ -249,9 +208,7 @@ class GHGEmissionCalculator:
     
     def calculate_vermicomposting_emissions(self, waste_kg_day, moisture_fraction, years=20,
                                             f_ch4=None, f_n2o=None):
-        """
-        Calcula as emissões da vermicompostagem.
-        """
+        """Calcula as emissões da vermicompostagem."""
         if f_ch4 is None:
             f_ch4 = self.f_CH4_vermi
         if f_n2o is None:
@@ -301,10 +258,7 @@ class GHGEmissionCalculator:
                                     doc_fraction, moisture_fraction, years=20,
                                     gwp_ch4=None, gwp_n2o=None,
                                     f_ch4_vermi=None, f_n2o_vermi=None):
-        """
-        Calcula as emissões evitadas para ambas as tecnologias.
-        """
-        # Usar GWP fornecidos ou valores padrão
+        """Calcula as emissões evitadas para ambas as tecnologias."""
         if gwp_ch4 is None:
             gwp_ch4 = self.GWP_CH4_20
         if gwp_n2o is None:
@@ -328,7 +282,7 @@ class GHGEmissionCalculator:
             waste_kg_day, moisture_fraction, years
         )
         
-        # Converter para CO2eq usando os GWP fornecidos
+        # Converter para CO2eq
         baseline_co2eq = (ch4_landfill * gwp_ch4 + n2o_landfill * gwp_n2o) / 1000
         vermi_co2eq = (ch4_vermi * gwp_ch4 + n2o_vermi * gwp_n2o) / 1000
         thermo_co2eq = (ch4_thermo * gwp_ch4 + n2o_thermo * gwp_n2o) / 1000
@@ -354,7 +308,7 @@ class GHGEmissionCalculator:
             'N2O_Thermo_kg_dia': n2o_thermo,
         })
         
-        # Adicionar colunas de CO2eq usando os GWP fornecidos
+        # Adicionar colunas de CO2eq
         for gas in ['CH4_Aterro', 'N2O_Aterro', 'CH4_Vermi', 'N2O_Vermi', 'CH4_Thermo', 'N2O_Thermo']:
             gwp = gwp_ch4 if 'CH4' in gas else gwp_n2o
             df_detalhado[f'{gas}_tCO2eq'] = df_detalhado[f'{gas}_kg_dia'] * gwp / 1000
@@ -390,7 +344,6 @@ class GHGEmissionCalculator:
             'Total_Thermo_tCO2eq_dia': 'Emissões_Termofílica_tCO2eq',
         }, inplace=True)
         
-        # Dicionário de resultados
         results = {
             'baseline': {
                 'ch4_kg': ch4_landfill.sum(),
@@ -427,10 +380,10 @@ class GHGEmissionCalculator:
         return results
 
 # =============================================================================
-# FUNÇÕES DE ANÁLISE DE SENSIBILIDADE E MONTE CARLO (adaptadas)
+# FUNÇÕES AUXILIARES PARA ANÁLISE DE SENSIBILIDADE E MONTE CARLO
 # =============================================================================
 def run_sobol_sensitivity(calculator, waste_kg_day, moisture, years=20, n_samples=64):
-    """Executa a análise de sensibilidade de Sobol sobre as emissões evitadas."""
+    """Executa análise de sensibilidade de Sobol sobre emissões evitadas."""
     k_fixed = 0.06
     doc_fixed = 0.15
 
@@ -465,7 +418,6 @@ def run_sobol_sensitivity(calculator, waste_kg_day, moisture, years=20, n_sample
     }
 
     param_values = sample(problem, n_samples, seed=50)
-
     results_vermi = Parallel(n_jobs=-1)(delayed(vermicomposting_model)(params) for params in param_values)
     results_thermo = Parallel(n_jobs=-1)(delayed(thermophilic_model)(params) for params in param_values)
 
@@ -475,18 +427,14 @@ def run_sobol_sensitivity(calculator, waste_kg_day, moisture, years=20, n_sample
     return {
         'vermi': Si_vermi,
         'thermo': Si_thermo,
-        'problem': problem,
-        'samples': param_values,
-        'results_vermi': results_vermi,
-        'results_thermo': results_thermo
+        'problem': problem
     }
 
 def run_monte_carlo_analysis(calculator, waste_kg_day, k, temp, doc, moisture, 
                             years=20, n_simulations=100,
                             prob_otimista=0.3, prob_real=0.5, prob_pessimista=0.2):
-    """Executa a análise de incerteza Monte Carlo."""
+    """Executa análise de incerteza Monte Carlo."""
     np.random.seed(50)
-
     cenarios = {
         'otimista':  {'ch4': 79.7, 'n2o': 273},
         'real':      {'ch4': 27.0, 'n2o': 273},
@@ -539,10 +487,10 @@ def run_monte_carlo_analysis(calculator, waste_kg_day, k, temp, doc, moisture,
     return np.array(results_vermi), np.array(results_thermo), mc_params_df
 
 # =============================================================================
-# FUNÇÕES DE VISUALIZAÇÃO (adaptadas para Streamlit)
+# FUNÇÕES DE VISUALIZAÇÃO (ADAPTADAS PARA STREAMLIT)
 # =============================================================================
-def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, calculator):
-    """Cria os gráficos do painel principal."""
+def create_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, calculator):
+    """Cria e retorna as figuras do painel principal."""
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     
     # 1. Comparação de emissões evitadas
@@ -550,10 +498,12 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     tecnologias = ['Vermicompostagem', 'Termofílica']
     evitadas = [results['vermicomposting']['avoided_co2eq_t'], 
                 results['thermophilic']['avoided_co2eq_t']]
+    
     bars = ax.bar(tecnologias, evitadas, color=['green', 'blue'])
     ax.set_ylabel('Emissões Evitadas (tCO₂eq)')
     ax.set_title('Emissões Evitadas em 20 anos')
     ax.grid(True, alpha=0.3)
+    
     for bar, val in zip(bars, evitadas):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(evitadas)*0.02,
                 f'{val:.1f}', ha='center', va='bottom')
@@ -570,6 +520,7 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
         results['thermophilic']['ch4_kg'] * calculator.GWP_CH4_20 / 1000,
         results['thermophilic']['n2o_kg'] * calculator.GWP_N2O_20 / 1000
     ]
+    
     cores = ['red', 'darkred', 'green', 'darkgreen', 'blue', 'darkblue']
     bars = ax.bar(categorias, emissoes, color=cores)
     ax.set_ylabel('Emissões (tCO₂eq)')
@@ -582,8 +533,10 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     parametros = ['T', 'U', 'fCH₄', 'fN₂O', 'GWP_CH₄', 'GWP_N₂O']
     x = np.arange(len(parametros))
     width = 0.35
+    
     ax.bar(x - width/2, sensitivity['vermi']['ST'], width, label='Vermicompostagem', alpha=0.8)
     ax.bar(x + width/2, sensitivity['thermo']['ST'], width, label='Termofílica', alpha=0.8)
+    
     ax.set_xlabel('Parâmetro')
     ax.set_ylabel('Índice de Sensibilidade Total (ST)')
     ax.set_title('Análise de Sensibilidade Global')
@@ -596,10 +549,12 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     ax = axes[1, 0]
     sns.histplot(mc_vermi, kde=True, color='green', label='Vermicompostagem', alpha=0.6, ax=ax)
     sns.histplot(mc_thermo, kde=True, color='blue', label='Termofílica', alpha=0.6, ax=ax)
+    
     ax.axvline(results['vermicomposting']['avoided_co2eq_t'], color='green', linestyle='--',
                label=f'Média Vermi: {results["vermicomposting"]["avoided_co2eq_t"]:.1f}')
     ax.axvline(results['thermophilic']['avoided_co2eq_t'], color='blue', linestyle='--',
                label=f'Média Termo: {results["thermophilic"]["avoided_co2eq_t"]:.1f}')
+    
     ax.set_xlabel('Emissões Evitadas (tCO₂eq)')
     ax.set_ylabel('Frequência')
     ax.set_title('Análise de Incerteza Monte Carlo')
@@ -610,12 +565,15 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     ax = axes[1, 1]
     fator_vermi = results['vermicomposting']['avoided_co2eq_t'] / total_waste_tons
     fator_thermo = results['thermophilic']['avoided_co2eq_t'] / total_waste_tons
+    
     fatores = [fator_vermi, fator_thermo]
     tecnologias = ['Vermicompostagem', 'Termofílica']
+    
     bars = ax.bar(tecnologias, fatores, color=['green', 'blue'])
     ax.set_ylabel('Emissões Evitadas (tCO₂eq/t residuo)')
     ax.set_title('Fatores de Emissão por Tonelada de Resíduo')
     ax.grid(True, alpha=0.3)
+    
     for bar, fator in zip(bars, fatores):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(fatores)*0.02,
                 f'{fator:.3f}', ha='center', va='bottom')
@@ -623,6 +581,7 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     # 6. Métricas resumidas
     ax = axes[1, 2]
     ax.axis('off')
+    
     texto_resumo = f"""
     RESUMO DAS MÉTRICAS
     
@@ -650,6 +609,7 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     • GWP_CH₄: {sensitivity['vermi']['ST'][4]:.3f}
     • GWP_N₂O: {sensitivity['vermi']['ST'][5]:.3f}
     """
+    
     ax.text(0.05, 0.95, texto_resumo, fontsize=9, family='monospace',
             verticalalignment='top', transform=ax.transAxes)
     
@@ -657,10 +617,10 @@ def plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, 
     plt.tight_layout()
     return fig
 
-def plot_accumulated_emissions(results):
-    """Gráfico de emissões acumuladas."""
-    df_detalhado = results['detailed_data']['daily']
+def create_emissions_accumulated_plot(results):
+    """Gráfico de emissões acumuladas ao longo do tempo."""
     fig, ax = plt.subplots(figsize=(10, 6))
+    df_detalhado = results['detailed_data']['daily']
     ax.plot(df_detalhado['Data'], df_detalhado['Total_Aterro_tCO2eq_acum'], 
             label='Baseline (Aterro)', color='red', linewidth=2)
     ax.plot(df_detalhado['Data'], df_detalhado['Total_Vermi_tCO2eq_acum'], 
@@ -674,15 +634,17 @@ def plot_accumulated_emissions(results):
     ax.grid(True, alpha=0.3)
     return fig
 
-def plot_annual_emissions(results):
-    """Gráfico de emissões anuais."""
-    df_anual = results['detailed_data']['annual']
+def create_annual_emissions_plot(results):
+    """Gráfico de barras anuais."""
     fig, ax = plt.subplots(figsize=(10, 6))
+    df_anual = results['detailed_data']['annual']
     x = np.arange(len(df_anual))
     width = 0.25
+    
     ax.bar(x - width, df_anual['Emissões_Baseline_tCO2eq'], width, label='Baseline', color='red')
     ax.bar(x, df_anual['Emissões_Vermicompostagem_tCO2eq'], width, label='Vermicompostagem', color='green')
     ax.bar(x + width, df_anual['Emissões_Termofílica_tCO2eq'], width, label='Termofílica', color='blue')
+    
     ax.set_xlabel('Ano')
     ax.set_ylabel('Emissões Anuais (tCO₂eq)')
     ax.set_title('Emissões Anuais de GEE por Tecnologia')
@@ -690,319 +652,203 @@ def plot_annual_emissions(results):
     ax.set_xticklabels(df_anual['Ano'].astype(str), rotation=45)
     ax.legend()
     ax.grid(True, alpha=0.3)
-    return fig
-
-def plot_monte_carlo_detail(mc_vermi, mc_thermo):
-    """Gráficos detalhados de Monte Carlo."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    ax1.hist(mc_vermi, bins=30, color='green', alpha=0.7, edgecolor='black')
-    ax1.axvline(np.mean(mc_vermi), color='darkgreen', linestyle='--', linewidth=2, 
-                label=f'Média: {np.mean(mc_vermi):.1f}')
-    ax1.axvline(np.percentile(mc_vermi, 5), color='gray', linestyle=':', 
-                label=f'P5: {np.percentile(mc_vermi, 5):.1f}')
-    ax1.axvline(np.percentile(mc_vermi, 95), color='gray', linestyle=':', 
-                label=f'P95: {np.percentile(mc_vermi, 95):.1f}')
-    ax1.set_xlabel('Emissões Evitadas (tCO₂eq)')
-    ax1.set_ylabel('Frequência')
-    ax1.set_title('Vermicompostagem - Distribuição Monte Carlo')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    
-    ax2.hist(mc_thermo, bins=30, color='blue', alpha=0.7, edgecolor='black')
-    ax2.axvline(np.mean(mc_thermo), color='darkblue', linestyle='--', linewidth=2, 
-                label=f'Média: {np.mean(mc_thermo):.1f}')
-    ax2.axvline(np.percentile(mc_thermo, 5), color='gray', linestyle=':', 
-                label=f'P5: {np.percentile(mc_thermo, 5):.1f}')
-    ax2.axvline(np.percentile(mc_thermo, 95), color='gray', linestyle=':', 
-                label=f'P95: {np.percentile(mc_thermo, 95):.1f}')
-    ax2.set_xlabel('Emissões Evitadas (tCO₂eq)')
-    ax2.set_ylabel('Frequência')
-    ax2.set_title('Termofílica - Distribuição Monte Carlo')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
     plt.tight_layout()
     return fig
 
-def plot_tornado_sensitivity(sensitivity):
-    """Gráfico de tornado da sensibilidade."""
+def create_tornado_plot(sensitivity):
+    """Gráfico de tornado para sensibilidade."""
     fig, ax = plt.subplots(figsize=(10, 6))
     params = ['T', 'U', 'fCH4', 'fN2O', 'GWP_CH4', 'GWP_N2O']
     vermi_st = sensitivity['vermi']['ST']
     thermo_st = sensitivity['thermo']['ST']
+    
     y_pos = np.arange(len(params))
+    
     ax.barh(y_pos - 0.2, vermi_st, height=0.4, label='Vermicompostagem', color='green', alpha=0.7)
     ax.barh(y_pos + 0.2, thermo_st, height=0.4, label='Termofílica', color='blue', alpha=0.7)
+    
     ax.set_xlabel('Índice de Sensibilidade Total (ST)')
     ax.set_title('Comparação da Sensibilidade dos Parâmetros')
     ax.set_yticks(y_pos)
     ax.set_yticklabels(params)
     ax.legend()
     ax.grid(True, alpha=0.3, axis='x')
+    plt.tight_layout()
     return fig
 
 # =============================================================================
-# FUNÇÕES DE EXPORTAÇÃO (Excel em memória)
-# =============================================================================
-def export_excel(results, calculator, params):
-    """Exporta os resultados para um arquivo Excel em memória."""
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Aba detalhada diária
-        results['detailed_data']['daily'].to_excel(writer, sheet_name='Detalhamento_Diario', index=False)
-        # Aba resumo anual
-        results['detailed_data']['annual'].to_excel(writer, sheet_name='Resumo_Anual', index=False)
-        # Aba comparativo anual
-        df_anual = results['detailed_data']['annual']
-        df_comparativo = pd.DataFrame({
-            'Ano': df_anual['Ano'],
-            'Emissões Baseline (t CO₂eq)': df_anual['Emissões_Baseline_tCO2eq'],
-            'Emissões Vermicompostagem (t CO₂eq)': df_anual['Emissões_Vermicompostagem_tCO2eq'],
-            'Emissões Termofílica (t CO₂eq)': df_anual['Emissões_Termofílica_tCO2eq'],
-            'Redução Vermi (t CO₂eq)': df_anual['Redução_Vermi_tCO2eq'],
-            'Redução Termo (t CO₂eq)': df_anual['Redução_Thermo_tCO2eq'],
-            'Redução Acumulada Vermi (t CO₂eq)': df_anual['Redução_Acumulada_Vermi_tCO2eq'],
-            'Redução Acumulada Termo (t CO₂eq)': df_anual['Redução_Acumulada_Thermo_tCO2eq']
-        })
-        df_comparativo.to_excel(writer, sheet_name='Comparativo_Anual', index=False)
-        # Aba parâmetros
-        param_summary = pd.DataFrame({
-            'Parâmetro': [
-                'Resíduos diários (kg/dia)', 'Período de simulação (anos)', 'Total de resíduos processados (t)',
-                'Taxa de decaimento do aterro (k) (ano⁻¹)', 'Temperatura (°C)', 'Fração DOC', 'Umidade (%)',
-                'MCF (aterro gerenciado)', 'F (fração de CH4)', 'OX (fator de oxidação)',
-                'TOC (kg C/kg resíduo)', 'TN (kg N/kg resíduo)', 'Fração CH4 vermicompostagem',
-                'Fração N2O vermicompostagem', 'Fração CH4 termofílica', 'Fração N2O termofílica',
-                'GWP CH4 (20 anos) - Cenário realista', 'GWP N2O (20 anos) - Cenário realista'
-            ],
-            'Valor': [
-                params['waste_kg_day'], params['years'], params['waste_kg_day'] * 365 * params['years'] / 1000,
-                params['k_year'], params['temperature_C'], params['doc_fraction'], params['moisture_fraction'] * 100,
-                calculator.MCF, calculator.F, calculator.OX, calculator.TOC, calculator.TN,
-                calculator.f_CH4_vermi, calculator.f_N2O_vermi, calculator.f_CH4_thermo,
-                calculator.f_N2O_thermo, calculator.GWP_CH4_20, calculator.GWP_N2O_20
-            ]
-        })
-        param_summary.to_excel(writer, sheet_name='Parametros', index=False)
-        # Perfis de emissão
-        perfis_df = pd.DataFrame({
-            'Dia': list(range(1, 51)),
-            'CH4 Vermicompostagem': calculator.profile_ch4_vermi,
-            'N2O Vermicompostagem': calculator.profile_n2o_vermi,
-            'CH4 Termofílica': calculator.profile_ch4_thermo,
-            'N2O Termofílica': calculator.profile_n2o_thermo
-        })
-        perfis_df.to_excel(writer, sheet_name='Perfis_Emissao', index=False)
-        
-        n2o_landfill_vals = [calculator.profile_n2o_landfill.get(d, 0) for d in range(1, 6)]
-        n2o_pre_vals = [calculator.profile_n2o_pre.get(d, 0) for d in range(1, 6)]
-        landfill_profiles = pd.DataFrame({
-            'Dia': list(range(1, 6)),
-            'N2O Aterro': n2o_landfill_vals,
-            'N2O Pré-descarte': n2o_pre_vals
-        })
-        landfill_profiles.to_excel(writer, sheet_name='Perfis_Aterro', index=False)
-    
-    output.seek(0)
-    return output
-
-# =============================================================================
-# INTERFACE STREAMLIT
+# FUNÇÃO PRINCIPAL STREAMLIT
 # =============================================================================
 def main():
-    st.markdown('<div class="main-header">♻️ Nutriwash Circular System BR</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Calculadora de Emissões de GEE para Gestão de Resíduos</div>', unsafe_allow_html=True)
+    st.set_page_config(
+        page_title="Nutriwash Circular System BR",
+        page_icon="♻️",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     
-    # Sidebar com parâmetros
+    # CSS personalizado para formatação brasileira e estética
+    st.markdown("""
+        <style>
+        .main {
+            background-color: #f5f5f5;
+        }
+        .stButton>button {
+            background-color: #2e7d32;
+            color: white;
+        }
+        .stButton>button:hover {
+            background-color: #1b5e20;
+        }
+        .metric-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.title("♻️ Nutriwash Circular System BR")
+    st.markdown("### Calculadora de Emissões de GEE para Gestão de Resíduos")
+    st.markdown("---")
+    
+    # Sidebar - Parâmetros de entrada
     with st.sidebar:
         st.header("📊 Parâmetros de Entrada")
-        
+        st.markdown("**Dados de Resíduos**")
         waste_kg_day = st.number_input("Resíduos diários (kg/dia)", min_value=1, max_value=100000, value=100, step=10)
-        years = st.slider("Período de simulação (anos)", min_value=1, max_value=50, value=20, step=1)
-        k_year = st.slider("Taxa de decaimento do aterro (k) (ano⁻¹)", min_value=0.01, max_value=0.20, value=0.06, step=0.01, format="%.2f")
-        temperature_C = st.slider("Temperatura média (°C)", min_value=10.0, max_value=40.0, value=25.0, step=0.5)
-        doc_fraction = st.slider("Fração de carbono orgânico degradável (DOC)", min_value=0.05, max_value=0.30, value=0.15, step=0.01, format="%.2f")
-        moisture_fraction = st.slider("Umidade do resíduo (%)", min_value=50, max_value=90, value=85, step=1) / 100.0
+        years = st.number_input("Período de simulação (anos)", min_value=1, max_value=50, value=20, step=1)
         
-        st.header("⚙️ Configurações Avançadas")
-        run_sensitivity = st.checkbox("Executar análise de sensibilidade (Sobol)", value=True)
-        run_montecarlo = st.checkbox("Executar análise de incerteza (Monte Carlo)", value=True)
-        n_mc_sims = st.slider("Número de simulações Monte Carlo", min_value=50, max_value=500, value=100, step=50) if run_montecarlo else 100
+        st.markdown("**Parâmetros do Aterro**")
+        k_year = st.number_input("Taxa de decaimento k (ano⁻¹)", min_value=0.01, max_value=0.20, value=0.06, step=0.01, format="%.3f")
+        temperature = st.number_input("Temperatura do aterro (°C)", min_value=10, max_value=40, value=25, step=1)
+        doc_fraction = st.number_input("Fração DOC", min_value=0.05, max_value=0.30, value=0.15, step=0.01, format="%.3f")
         
-        st.header("🎯 Cenários GWP (para resultados determinísticos)")
-        gwp_scenario = st.selectbox("Selecione o cenário GWP", ["Realista (GWP-100)", "Otimista (GWP-20)", "Pessimista (GWP-500)"])
+        st.markdown("**Umidade do Resíduo**")
+        moisture = st.number_input("Umidade (%)", min_value=50, max_value=95, value=85, step=5) / 100.0
         
-        st.markdown("---")
-        st.caption("Metodologia baseada em IPCC (2006), Yang et al. (2017), Feng et al. (2020), Wang et al. (2017).")
+        st.markdown("**Cenários de GWP (Monte Carlo)**")
+        prob_otimista = st.slider("Probabilidade Cenário Otimista (GWP-20)", 0.0, 1.0, 0.3, step=0.05)
+        prob_real = st.slider("Probabilidade Cenário Realista (GWP-100)", 0.0, 1.0, 0.5, step=0.05)
+        prob_pessimista = st.slider("Probabilidade Cenário Pessimista (GWP-500)", 0.0, 1.0, 0.2, step=0.05)
+        
+        # Garantir soma 1
+        total_prob = prob_otimista + prob_real + prob_pessimista
+        if abs(total_prob - 1.0) > 0.01:
+            st.warning(f"As probabilidades somam {total_prob:.2f}. Ajustando para soma 1.")
+            prob_otimista /= total_prob
+            prob_real /= total_prob
+            prob_pessimista /= total_prob
+        
+        run_button = st.button("▶️ Executar Análise", use_container_width=True)
     
-    # Mapeamento de cenário GWP
-    gwp_map = {
-        "Realista (GWP-100)": {"ch4": 27.0, "n2o": 273},
-        "Otimista (GWP-20)": {"ch4": 79.7, "n2o": 273},
-        "Pessimista (GWP-500)": {"ch4": 7.2, "n2o": 130}
-    }
-    selected_gwp = gwp_map[gwp_scenario]
-    
-    # Instanciar calculadora
-    calculator = GHGEmissionCalculator()
-    
-    # Botão de execução
-    if st.button("🚀 Calcular Emissões", type="primary", use_container_width=True):
-        with st.spinner("Calculando resultados determinísticos..."):
-            # Resultado determinístico com GWP selecionado
+    if run_button:
+        with st.spinner("Processando dados e executando cálculos..."):
+            # Instanciar calculadora
+            calculator = GHGEmissionCalculator()
+            
+            # Calcular resultados determinísticos para cenário realista (padrão)
             results = calculator.calculate_avoided_emissions(
-                waste_kg_day, k_year, temperature_C, doc_fraction, moisture_fraction, years,
-                gwp_ch4=selected_gwp["ch4"], gwp_n2o=selected_gwp["n2o"]
+                waste_kg_day, k_year, temperature, doc_fraction, moisture, years,
+                gwp_ch4=27.0, gwp_n2o=273  # cenário realista
             )
-        
-        total_waste_tons = waste_kg_day * 365 * years / 1000
-        
-        # Executar análises opcionais
-        sensitivity = None
-        mc_vermi = None
-        mc_thermo = None
-        mc_params_df = None
-        
-        if run_sensitivity:
-            with st.spinner("Executando análise de sensibilidade de Sobol (pode levar alguns segundos)..."):
-                sensitivity = run_sobol_sensitivity(calculator, waste_kg_day, moisture_fraction, years)
-        if run_montecarlo:
-            with st.spinner(f"Executando {n_mc_sims} simulações Monte Carlo..."):
-                mc_vermi, mc_thermo, mc_params_df = run_monte_carlo_analysis(
-                    calculator, waste_kg_day, k_year, temperature_C, doc_fraction, moisture_fraction, years,
-                    n_simulations=n_mc_sims
-                )
-        
-        # Exibir resultados em abas
-        tab1, tab2, tab3, tab4 = st.tabs(["📈 Resultados Principais", "📉 Análise de Sensibilidade", "🎲 Monte Carlo", "📁 Exportar Dados"])
-        
-        with tab1:
-            st.subheader("Resultados Determinísticos")
+            
+            # Análise de sensibilidade
+            st.info("Executando análise de sensibilidade de Sobol...")
+            sensitivity = run_sobol_sensitivity(calculator, waste_kg_day, moisture, years)
+            
+            # Monte Carlo
+            st.info("Executando simulação Monte Carlo...")
+            mc_vermi, mc_thermo, mc_params = run_monte_carlo_analysis(
+                calculator, waste_kg_day, k_year, temperature, doc_fraction, moisture, years,
+                n_simulations=100,
+                prob_otimista=prob_otimista, prob_real=prob_real, prob_pessimista=prob_pessimista
+            )
+            
+            total_waste_tons = waste_kg_day * 365 * years / 1000
+            
+            # Exibir métricas principais
+            st.subheader("📈 Resultados Principais")
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Emissões evitadas - Vermicompostagem", f"{results['vermicomposting']['avoided_co2eq_t']:,.2f} tCO₂eq")
-                st.metric("Fator de emissão", f"{results['vermicomposting']['avoided_co2eq_t']/total_waste_tons:.3f} tCO₂eq/t")
+                st.metric("Emissões Evitadas - Vermicompostagem", 
+                          f"{results['vermicomposting']['avoided_co2eq_t']:,.1f} tCO₂eq".replace(',', 'X').replace('.', ',').replace('X', '.'))
             with col2:
-                st.metric("Emissões evitadas - Termofílica", f"{results['thermophilic']['avoided_co2eq_t']:,.2f} tCO₂eq")
-                st.metric("Fator de emissão", f"{results['thermophilic']['avoided_co2eq_t']/total_waste_tons:.3f} tCO₂eq/t")
+                st.metric("Emissões Evitadas - Termofílica", 
+                          f"{results['thermophilic']['avoided_co2eq_t']:,.1f} tCO₂eq".replace(',', 'X').replace('.', ',').replace('X', '.'))
             with col3:
-                st.metric("Diferença (Vermi - Termo)", f"{results['comparison']['difference_tco2eq']:,.2f} tCO₂eq")
-                st.metric("Superioridade da Vermicompostagem", f"{results['comparison']['superiority_percent']:.1f}%")
+                diff = results['comparison']['difference_tco2eq']
+                sup = results['comparison']['superiority_percent']
+                st.metric("Superioridade Vermicompostagem", 
+                          f"{sup:.1f}%", delta=f"{diff:+.1f} tCO₂eq")
             
-            st.subheader("Gráficos")
-            fig_dash = plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, calculator)
-            st.pyplot(fig_dash)
+            # Painel principal
+            st.subheader("📊 Painel de Resultados")
+            fig_dashboard = create_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, calculator)
+            st.pyplot(fig_dashboard)
             
-            st.subheader("Evolução Temporal")
-            fig_acum = plot_accumulated_emissions(results)
-            st.pyplot(fig_acum)
-            
-            fig_annual = plot_annual_emissions(results)
-            st.pyplot(fig_annual)
-        
-        with tab2:
-            if sensitivity is not None:
-                st.subheader("Índices de Sensibilidade de Sobol")
-                st.write("Índices de primeira ordem (S1) e total (ST) para cada parâmetro.")
-                df_sens_vermi = pd.DataFrame({
-                    "Parâmetro": sensitivity['problem']['names'],
-                    "S1 (Vermi)": sensitivity['vermi']['S1'],
-                    "ST (Vermi)": sensitivity['vermi']['ST'],
-                    "S1 (Termo)": sensitivity['thermo']['S1'],
-                    "ST (Termo)": sensitivity['thermo']['ST']
-                })
-                st.dataframe(df_sens_vermi)
-                fig_tornado = plot_tornado_sensitivity(sensitivity)
+            # Gráficos adicionais em abas
+            tab1, tab2, tab3 = st.tabs(["📈 Emissões Acumuladas", "📅 Emissões Anuais", "🎲 Análise de Sensibilidade"])
+            with tab1:
+                fig_acum = create_emissions_accumulated_plot(results)
+                st.pyplot(fig_acum)
+            with tab2:
+                fig_annual = create_annual_emissions_plot(results)
+                st.pyplot(fig_annual)
+            with tab3:
+                fig_tornado = create_tornado_plot(sensitivity)
                 st.pyplot(fig_tornado)
-            else:
-                st.info("Análise de sensibilidade não foi executada. Habilite na barra lateral.")
-        
-        with tab3:
-            if mc_vermi is not None:
-                st.subheader("Resultados da Simulação Monte Carlo")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Vermicompostagem - Média", f"{np.mean(mc_vermi):.2f} tCO₂eq")
-                    st.metric("Vermicompostagem - Desvio Padrão", f"{np.std(mc_vermi):.2f}")
-                    st.metric("Vermicompostagem - Percentil 5", f"{np.percentile(mc_vermi, 5):.2f}")
-                    st.metric("Vermicompostagem - Percentil 95", f"{np.percentile(mc_vermi, 95):.2f}")
-                with col2:
-                    st.metric("Termofílica - Média", f"{np.mean(mc_thermo):.2f} tCO₂eq")
-                    st.metric("Termofílica - Desvio Padrão", f"{np.std(mc_thermo):.2f}")
-                    st.metric("Termofílica - Percentil 5", f"{np.percentile(mc_thermo, 5):.2f}")
-                    st.metric("Termofílica - Percentil 95", f"{np.percentile(mc_thermo, 95):.2f}")
-                
-                prob_vermi_melhor = np.mean(mc_vermi > mc_thermo) * 100
-                st.metric("Probabilidade de Vermicompostagem ser melhor", f"{prob_vermi_melhor:.1f}%")
-                
-                fig_mc_detail = plot_monte_carlo_detail(mc_vermi, mc_thermo)
-                st.pyplot(fig_mc_detail)
-                
-                # Gráfico de dispersão (opcional)
-                if mc_params_df is not None:
-                    st.subheader("Relação com Temperatura")
-                    fig_scatter, ax = plt.subplots(figsize=(8, 5))
-                    ax.scatter(mc_params_df['temperatura'], mc_params_df['vermi_evitadas'], alpha=0.5, label='Vermi')
-                    ax.scatter(mc_params_df['temperatura'], mc_params_df['termo_evitadas'], alpha=0.5, label='Termo')
-                    ax.set_xlabel('Temperatura (°C)')
-                    ax.set_ylabel('Emissões Evitadas (tCO₂eq)')
-                    ax.set_title('Relação com Temperatura')
-                    ax.legend()
-                    ax.grid(True)
-                    st.pyplot(fig_scatter)
-            else:
-                st.info("Análise Monte Carlo não foi executada. Habilite na barra lateral.")
-        
-        with tab4:
-            st.subheader("Exportar Resultados")
-            # Botão para baixar Excel
-            params_export = {
-                'waste_kg_day': waste_kg_day,
-                'years': years,
-                'k_year': k_year,
-                'temperature_C': temperature_C,
-                'doc_fraction': doc_fraction,
-                'moisture_fraction': moisture_fraction
-            }
-            excel_file = export_excel(results, calculator, params_export)
-            st.download_button(
-                label="📥 Baixar arquivo Excel",
-                data=excel_file,
-                file_name=f"nutriwash_resultados_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
             
-            # Botão para baixar PDF (opcional, usando matplotlib)
-            if st.button("Gerar relatório PDF"):
-                with st.spinner("Gerando relatório PDF..."):
-                    pdf_buffer = io.BytesIO()
-                    with PdfPages(pdf_buffer) as pdf:
-                        # Página 1: Dashboard
-                        fig_dash = plot_dashboard(results, sensitivity, mc_vermi, mc_thermo, total_waste_tons, calculator)
-                        pdf.savefig(fig_dash, bbox_inches='tight')
-                        plt.close(fig_dash)
-                        # Página 2: Emissões acumuladas
-                        fig_acum = plot_accumulated_emissions(results)
-                        pdf.savefig(fig_acum, bbox_inches='tight')
-                        plt.close(fig_acum)
-                        # Página 3: Emissões anuais
-                        fig_annual = plot_annual_emissions(results)
-                        pdf.savefig(fig_annual, bbox_inches='tight')
-                        plt.close(fig_annual)
-                        # Página 4: Monte Carlo (se existir)
-                        if mc_vermi is not None:
-                            fig_mc = plot_monte_carlo_detail(mc_vermi, mc_thermo)
-                            pdf.savefig(fig_mc, bbox_inches='tight')
-                            plt.close(fig_mc)
-                    pdf_buffer.seek(0)
-                    st.download_button(
-                        label="📄 Baixar relatório PDF",
-                        data=pdf_buffer,
-                        file_name=f"nutriwash_relatorio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                        mime="application/pdf"
-                    )
+            # Exibir estatísticas do Monte Carlo
+            st.subheader("🎲 Estatísticas da Simulação Monte Carlo")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Vermicompostagem**")
+                st.write(f"Média: {np.mean(mc_vermi):.1f} tCO₂eq")
+                st.write(f"Desvio Padrão: {np.std(mc_vermi):.1f} tCO₂eq")
+                st.write(f"Percentil 5: {np.percentile(mc_vermi, 5):.1f} tCO₂eq")
+                st.write(f"Percentil 95: {np.percentile(mc_vermi, 95):.1f} tCO₂eq")
+            with col2:
+                st.markdown("**Termofílica**")
+                st.write(f"Média: {np.mean(mc_thermo):.1f} tCO₂eq")
+                st.write(f"Desvio Padrão: {np.std(mc_thermo):.1f} tCO₂eq")
+                st.write(f"Percentil 5: {np.percentile(mc_thermo, 5):.1f} tCO₂eq")
+                st.write(f"Percentil 95: {np.percentile(mc_thermo, 95):.1f} tCO₂eq")
             
-            st.subheader("Tabela Resumo Anual")
-            st.dataframe(results['detailed_data']['annual'])
+            prob_vermi_melhor = np.mean(mc_vermi > mc_thermo) * 100
+            st.success(f"✅ Probabilidade de a vermicompostagem superar a termofílica: **{prob_vermi_melhor:.1f}%**")
+            
+            # Opção de download dos dados
+            st.subheader("📥 Exportar Dados")
+            df_daily = results['detailed_data']['daily']
+            df_annual = results['detailed_data']['annual']
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                csv_daily = df_daily.to_csv(index=False).encode('utf-8')
+                st.download_button("Baixar dados diários (CSV)", csv_daily, "emissoes_diarias.csv", "text/csv")
+            with col2:
+                csv_annual = df_annual.to_csv(index=False).encode('utf-8')
+                st.download_button("Baixar dados anuais (CSV)", csv_annual, "emissoes_anuais.csv", "text/csv")
+    
+    else:
+        st.info("👈 Configure os parâmetros na barra lateral e clique em 'Executar Análise' para começar.")
+        st.markdown("""
+        ### Sobre o Aplicativo
+        Este aplicativo calcula as emissões de Gases de Efeito Estufa (GEE) para três cenários de gestão de resíduos:
+        - **Baseline**: Aterro Sanitário (metodologia IPCC 2006)
+        - **Tecnologia 1**: Vermicompostagem com minhocas em reatores
+        - **Tecnologia 2**: Compostagem Termofílica em leiras abertas
+        
+        **Funcionalidades**:
+        - Análise determinística das emissões evitadas
+        - Análise de sensibilidade global (Sobol) com 6 parâmetros
+        - Simulação de incerteza Monte Carlo com cenários de GWP (20, 100 e 500 anos)
+        - Visualizações interativas e exportação de dados
+        
+        **Metodologias**: IPCC (2006), Yang et al. (2017), Feng et al. (2020), Wang et al. (2017)
+        """)
 
 if __name__ == "__main__":
     main()
